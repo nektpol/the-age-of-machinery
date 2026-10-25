@@ -75,5 +75,34 @@ public class PlayerRewardInventory
 
         return Collections.unmodifiableMap(snapshot);
     }
+
+    
+    RewardClaimResult claimReward(String questId, String rewardId, RewardDelivery delivery)
+    {
+        Objects.requireNonNull(delivery, "Reward delivery cannot be null.");
+
+        List<RewardEntry> entries = rewardsByQuest.get(questId);
+
+        if (entries == null) return RewardClaimResult.NOT_FOUND;
+
+        for (int index = 0; index < entries.size(); index++)
+        {
+            RewardEntry entry = entries.get(index);
+
+            if (!entry.rewardId().equals(rewardId)) continue;
+            if (entry.isClaimed()) return RewardClaimResult.ALREADY_CLAIMED;
+            if (!delivery.deliver(entry.reward())) return RewardClaimResult.DELIVERY_FAILED;
+
+            List<RewardEntry> updatedEntries = new ArrayList<>(entries);
+            updatedEntries.set(index, new RewardEntry(questId, entry.reward(), RewardClaimState.CLAIMED));
+
+            rewardsByQuest.put(questId, List.copyOf(updatedEntries));
+
+            return RewardClaimResult.SUCCESS;
+        }
+
+        return RewardClaimResult.NOT_FOUND;
+    }
+
 }
 
