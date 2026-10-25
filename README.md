@@ -64,7 +64,7 @@ Quest IDs use namespaced identifiers such as `theageofmachinery:first_settlement
 - [x] Generate NeoForge project and verify build.
 - [x] Load mod in Modrinth Create+ profile.
 - [x] Implement quest definitions and validation.
-- [ ] Implement per-player progress and persistence.
+- [x] Implement per-player progress and persistence.
 - [ ] Add Create development dependency.
 - [ ] Implement journal and progressive hints.
 - [ ] Build introductory quest chain.
