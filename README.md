@@ -1,25 +1,75 @@
+# The Age of Machinery
 
-Installation information
-=======
+A Create-only quest and progression mod for Minecraft 1.21.1 (NeoForge).
 
-This template repository can be directly cloned to get you started with a new
-mod. Simply create a new repository cloned from this one, by following the
-instructions provided by [GitHub](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template).
+## Status
 
-Once you have your clone, simply open the repository in the IDE of your choice. The usual recommendation for an IDE is either IntelliJ IDEA or Eclipse.
+Early development: the mod builds and loads. Quest functionality is planned.
 
-If at any point you are missing libraries in your IDE, or you've run into problems you can
-run `gradlew --refresh-dependencies` to refresh the local cache. `gradlew clean` to reset everything 
-{this does not affect your code} and then start the process again.
+## Goals
 
-Mapping Names:
-============
-By default, the MDK is configured to use the official mapping names from Mojang for methods and fields 
-in the Minecraft codebase. These names are covered by a specific license. All modders should be aware of this
-license. For the latest license text, refer to the mapping file itself, or the reference copy here:
-https://github.com/NeoForged/NeoForm/blob/main/Mojang.md
+- Engineering challenges that encourage discovery rather than spoil solutions.
+- Three optional hint levels.
+- Ingredient checklists with quantities when introducing new crafting goals.
+- Automatic objective tracking where supported.
+- **Individual quest progression per player**, including multiplayer.
+- Persistent progress across sessions.
+- Data-driven quest definitions in JSON.
 
-Additional Resources: 
-==========
-Community Documentation: https://docs.neoforged.net/  
-NeoForged Discord: https://discord.neoforged.net/
+## Development stack
+
+- Minecraft 1.21.1
+- NeoForge 21.1.233 (initial compatibility target)
+- Java 21
+- Gradle / ModDevGradle
+- Visual Studio Code
+- Create integration planned
+
+## Building
+
+Install JDK 21, then run from the project root:
+
+```powershell
+.\gradlew.bat build
+```
+
+The JAR will be generated under `build/libs/`.
+
+To start the isolated development client:
+
+```powershell
+.\gradlew.bat runClient
+```
+
+The development client does not automatically load your Modrinth profile mods or saves.
+
+## Testing in Modrinth
+
+Back up your world first. Copy the built JAR into the compatible NeoForge profile `mods/` directory, replacing only previous versions of this mod. Create and its dependencies must be installed separately.
+
+## Planned architecture
+
+- `QuestDefinition`: immutable quest metadata, prerequisites, objectives, hints, ingredients.
+- `QuestProgress`: per-player mutable objective and completion state.
+- `QuestManager`: progression and unlocking.
+- Objective evaluators: crafting, placement, processing, automation.
+- Create integration: gameplay event and machinery detection.
+- Persistence: server-authoritative per-player data.
+- Quest journal: objectives, hints, and ingredient requirements.
+
+Quest IDs use namespaced identifiers such as `theageofmachinery:first_settlement`.
+
+## Roadmap
+
+- [x] Generate NeoForge project and verify build.
+- [x] Load mod in Modrinth Create+ profile.
+- [ ] Implement quest definitions and validation.
+- [ ] Implement per-player progress and persistence.
+- [ ] Add Create development dependency.
+- [ ] Implement journal and progressive hints.
+- [ ] Build introductory quest chain.
+- [ ] Detect functional Create automation.
+
+## License
+
+Currently All Rights Reserved, as declared by the generated project. No open-source license is granted at this time.
