@@ -66,6 +66,7 @@ public class QuestProgress
     {
         if (state != QuestState.ACTIVE || !questId.equals(definition.id())) return false;
 
+        // Can be replaced with a stream-based approach if desired, but a loop is used for clarity.
         for (QuestObjective objective : definition.objectives())
         {
             if (objective.optional()) continue;
