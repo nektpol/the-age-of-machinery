@@ -9,6 +9,7 @@ import com.TheAgeOfMachinery.quest.QuestProgress;
 import com.TheAgeOfMachinery.reward.RewardClaimResult;
 import com.TheAgeOfMachinery.reward.RewardEntry;
 import com.TheAgeOfMachinery.runtime.CampaignRuntime;
+import com.TheAgeOfMachinery.persistence.CampaignSavedData;
 
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -24,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 
 import javax.annotation.Nonnull;
 
@@ -40,6 +42,8 @@ public final class CampaignRuntimeTestCommand
                 .requires(source -> source.hasPermission(2))
                 .then(Commands.literal("status").executes(context -> status(context.getSource())))
                 .then(Commands.literal("campaign").executes(context -> campaign(context.getSource())))
+                .then(Commands.literal("verify").executes(context -> verify(context.getSource())))
+                .then(Commands.literal("audit").executes(context -> audit(context.getSource())))
                 .then(Commands.literal("start").executes(context -> start(context.getSource())))
                 .then(Commands.literal("progress")
                     .then(Commands.argument("objectiveId", Objects.requireNonNull(StringArgumentType.word()))
@@ -206,5 +210,93 @@ public final class CampaignRuntimeTestCommand
 
         source.sendFailure(message);
         return 0;
+    }
+
+    private static int verify(CommandSourceStack source) throws CommandSyntaxException
+    {
+        ServerPlayer player = source.getPlayerOrException();
+        CampaignRuntime runtime = CampaignRuntime.get(source.getServer());
+        CampaignSavedData savedData = CampaignSavedData.get(source.getServer());
+        UUID playerId = player.getUUID();
+
+        Optional<CampaignSavedData.PlayerSnapshot> beforeResult = savedData.getPlayerSnapshot(playerId);
+
+        if (beforeResult.isEmpty()) return failure(source, "Player campaign has not been initialized.");
+
+        CampaignSavedData.PlayerSnapshot before = beforeResult.get();
+        Map<String, List<RewardEntry>> rewardsBefore = runtime.getUnlockedRewards(player);
+
+        if (runtime.addObjectiveProgress(player, "invalid_debug_objective", 1))
+        {
+            return failure(source, "Invalid objective was incorrectly accepted.");
+        }
+
+        if (runtime.addObjectiveProgress(player, "gather_cobblestone", 0))
+        {
+            return failure(source, "Zero progress was incorrectly accepted.");
+        }
+
+        if (runtime.addObjectiveProgress(player, "gather_cobblestone", -1))
+        {
+            return failure(source, "Negative progress was incorrectly accepted.");
+        }
+
+        RewardClaimResult claimResult = runtime.claimReward(player, "theageofmachinery:prototype_first_workshop", "invalid_debug_reward");
+
+        if (claimResult != RewardClaimResult.NOT_FOUND)
+        {
+            return failure(source, "Invalid reward claim returned: " + claimResult);
+        }
+
+        Optional<CampaignSavedData.PlayerSnapshot> afterResult = savedData.getPlayerSnapshot(playerId);
+
+        if (afterResult.isEmpty()) return failure(source, "Player campaign disappeared during verification.");
+
+        CampaignSavedData.PlayerSnapshot after = afterResult.get();
+        Map<String, List<RewardEntry>> rewardsAfter = runtime.getUnlockedRewards(player);
+
+        if (after.revision() != before.revision())
+        {
+            return failure(source, "Rejected operations unexpectedly changed the player revision.");
+        }
+
+        if (!rewardsBefore.equals(rewardsAfter))
+        {
+            return failure(source, "Rejected operations unexpectedly changed unlocked rewards.");
+        }
+
+        return success(source, "PASS: Invalid operations rejected. Campaign revision and rewards unchanged.");
+    }
+    
+    private static int audit(CommandSourceStack source)
+    {
+        CampaignRuntime runtime = CampaignRuntime.get(source.getServer());
+        List<ServerPlayer> onlinePlayers = source.getServer().getPlayerList().getPlayers();
+
+        success(source, "Campaign runtime session: " + runtime.getSessionId());
+        success(source, "Online players: " + onlinePlayers.size());
+
+        for (ServerPlayer player : onlinePlayers)
+        {
+            Optional<PlayerQuestProgress> progress = runtime.getPlayerQuestProgress(player);
+            Optional<QuestDefinition> activeQuest = runtime.getActiveQuestDefinition(player);
+            Map<String, List<RewardEntry>> rewards = runtime.getUnlockedRewards(player);
+
+            String questStatus = "Not initialized";
+
+            if (progress.isPresent())
+            {
+                questStatus = activeQuest.isPresent() ? activeQuest.get().title() : "No active quest";
+            }
+
+            success(source, player.getName().getString() + " | Quest: " + questStatus + " | Reward groups: " + rewards.size());
+        }
+
+        if (onlinePlayers.size() < 2)
+        {
+            success(source, "Multiplayer isolation requires at least two connected players.");
+        }
+
+        return 1;
     }
 }
