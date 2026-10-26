@@ -104,5 +104,33 @@ public class PlayerRewardInventory
         return RewardClaimResult.NOT_FOUND;
     }
 
+    public static PlayerRewardInventory restore(UUID playerId, Map<String, List<RewardEntry>> savedRewards)
+    {
+        Objects.requireNonNull(savedRewards, "Saved rewards cannot be null.");
+
+        PlayerRewardInventory inventory = new PlayerRewardInventory(playerId);
+
+        for (Map.Entry<String, List<RewardEntry>> group : savedRewards.entrySet())
+        {
+            String questId = group.getKey();
+            List<RewardEntry> entries = List.copyOf(group.getValue());
+
+            if (questId == null || questId.isBlank()) throw new IllegalArgumentException("Saved quest ID cannot be empty.");
+
+            Set<String> rewardIds = new HashSet<>();
+
+            for (RewardEntry entry : entries)
+            {
+                if (!entry.questId().equals(questId)) throw new IllegalArgumentException("Reward belongs to a different quest.");
+                if (!rewardIds.add(entry.rewardId())) throw new IllegalArgumentException("Duplicate reward ID: " + entry.rewardId());
+            }
+
+            inventory.rewardsByQuest.put(questId, entries);
+        }
+
+        return inventory;
+    }
+
+
 }
 
