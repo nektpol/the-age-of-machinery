@@ -24,6 +24,7 @@ import com.TheAgeOfMachinery.reward.RewardPersistenceTestCommand;
 import com.TheAgeOfMachinery.runtime.CampaignRuntime;
 import com.TheAgeOfMachinery.runtime.CampaignPlayerEvents;
 import com.TheAgeOfMachinery.runtime.CampaignCraftingEvents;
+import com.TheAgeOfMachinery.runtime.CampaignItemPickupEvents;
 
 import net.neoforged.neoforge.common.NeoForge;
 
@@ -54,8 +55,9 @@ public class TheAgeofMachinery
         NeoForge.EVENT_BUS.addListener(CampaignRuntime::onServerStarted);
         NeoForge.EVENT_BUS.addListener(CampaignRuntime::onServerStopped);
         NeoForge.EVENT_BUS.addListener(CampaignPlayerEvents::onPlayerLoggedIn);
-        
+
         NeoForge.EVENT_BUS.addListener(CampaignCraftingEvents::onItemCrafted);
+        NeoForge.EVENT_BUS.addListener(CampaignItemPickupEvents::onItemPickedUp);
     }
 }
 
