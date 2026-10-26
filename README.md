@@ -2,127 +2,129 @@
 
 *A spoiler-conscious, Create-focused quest and progression mod for Minecraft Java Edition 1.21.1 (NeoForge).*
 
-> **Development status — 26 October 2026:** Early development. The Java quest/reward domain model and Minecraft integrations are working in isolated tests, but there is **no complete playable quest campaign or player-facing quest/rewards UI yet**.
+> **Development checkpoint — 26 October 2026 · Milestone 2.11.6.** The **server-side quest/reward prototype is functional**: quests initialize on login, progress can be updated through development commands, advancement automatically unlocks earned rewards, rewards can be claimed independently, and state survives world restarts. **Real gameplay-triggered objectives, Create-specific integration, the player-facing journal, networking, and the complete campaign are not yet implemented.** Two-player multiplayer testing is **pending** because a second account was unavailable.
 
-## Project goals
+## What this mod is intended to do
 
-- One active quest per player, with mandatory objectives and optional challenges.
-- Manual quest advancement after the mandatory objectives are completed.
-- No future-quest previews or reward previews before finishing a quest; only earned rewards are revealed.
-- Three levels of optional spoiler-controlled hints and first-use ingredient checklists with quantities.
-- Independent, server-owned player progression keyed by UUID, including multiplayer support in the intended design.
-- Rewards earned at quest finalization, grouped by quest, claimable at any later time. Each entry is indivisible (for example, 100 XP, 50 XP and 5 cogwheels can be claimed separately, but not fractionally).
-- Engineering-oriented objectives emphasizing functional Create machinery and discovery rather than grind.
+The Age of Machinery guides players through a discovery-oriented progression of **Create** engineering challenges in Minecraft. It is a quest experience designed for the Create/Create+ ecosystem, not a generic quest engine.
+
+- **One active quest per player**, with mandatory and optional objectives and completed quest history.
+- **Manual advancement** after mandatory objectives are complete; optional objectives remain available until the player chooses to advance.
+- **No spoilers:** future quests and the current quest's rewards remain undisclosed during play. Only *earned* rewards are revealed when a quest is finalized.
+- **Independent, persistent reward claims:** main and earned optional rewards are grouped by quest. Each entry can be claimed separately, but never partially; unclaimed rewards survive subsequent quests and world restarts.
+- **Hints and material lists:** three levels of optional hints are planned. The first time a quest asks players to craft/build something, its instructions should include ingredient quantities.
+- **Server-owned UUID progression**, intended for multiplayer; two-player isolation has **not** been tested yet.
+- **Functional engineering objectives**, ultimately detecting real Minecraft and Create gameplay rather than relying on debug commands.
 
 ## Current implementation
 
-| Area | Status |
+| Subsystem | Status as of 2.11.6 |
 |---|---|
-| Quest definitions, objectives and progression model | Implemented in Java; build verified |
-| Per-player quest tracking and linear campaign coordinator | Implemented in-memory; progression hardening pending |
-| XP and item reward definitions, entitlement inventory and claim results | Implemented; build verified |
-| Minecraft XP delivery (`ServerPlayer`) | Manually verified in-game: 100 XP received |
-| Full item reward delivery | Manually verified: five iron ingots, full-inventory rejection with no partial delivery, and successful retry |
-| Debug reward claiming via `RewardManager` | Manually verified: three entries, independent claims, duplicate-claim rejection |
-| Quest progress NBT codec and world persistence | Implemented; mandatory/optional progress and completion survived world restarts in a debug test |
-| Reward inventory NBT codec and world storage | Implemented and built; **reward restart test pending** |
-| Live quest/reward managers using the saved world data | **Not yet integrated** |
-| Create objective detection, JSON campaign, client journal and rewards UI | **Not yet implemented** |
-| Automated tests, multiplayer and crash consistency | **Pending** |
+| Java quest models, mandatory/optional objectives, per-player history | Implemented; tested |
+| XP and item rewards, independently claimed by quest | Implemented; tested in-game |
+| Full-inventory refusal (all-or-nothing item reward) | Verified in-game, including retry |
+| Minecraft `SavedData` and NBT codecs (`FormatVersion = 3`) | Implemented; normal world-restart tests passed |
+| Coordinated advancement: reward calculation → staged state → one in-memory commit → next quest | Implemented; tested |
+| Detached state snapshots, revision-checked writes, duplicate/reentrant claim guards | Implemented; regression and failure-injection tests passed |
+| One server-scoped `CampaignRuntime` and automatic login initialization | Implemented; tested across world restarts |
+| Built-in two-quest prototype registered on server startup | Implemented; tested via debug commands |
+| Rejected invalid objectives, invalid amounts, and nonexistent rewards | Verified in-game |
+| Two-player multiplayer isolation | **Pending — not tested** |
+| Automatic crafting/collection objective tracking | **Not implemented** |
+| Create machinery/automation detection | **Not implemented** |
+| JSON quest definitions, final campaign content | **Not implemented** |
+| Client network synchronization, Quest Journal, rewards screen and hint UI | **Not implemented** |
+| Crash-atomic XP/item delivery and automated test suite | **Not implemented** |
 
-This distinction matters: debug/test commands demonstrate individual systems; they do not constitute a finished campaign or guarantee crash-safe reward claiming.
+**Verification caveat:** The developer reported successful builds, in-game tests, world-restart tests, and commits through 2.11.6. These are manual development checks, not an independent source audit or an automated CI test suite. The two-player scenario described in 2.11.6 was **not performed**.
 
-## Development stack
+## Current prototype campaign
 
-- Minecraft Java Edition **1.21.1**
-- **NeoForge 21.1.233** as the currently tested Create+ compatibility target
-- **Java 21** with Gradle / ModDevGradle
-- Visual Studio Code
-- Create/ Create+ as intended gameplay ecosystem; development `runClient` does not automatically include the Modrinth Create+ modpack
-- Package currently used in source: `com.TheAgeOfMachinery`
-- Mod ID: `theageofmachinery`
+The runtime registers two **development-only, server-side definitions**; they are not the final Create progression:
 
-## Build and local development
+1. **The First Workshop** (`theageofmachinery:prototype_first_workshop`): mandatory *Obtain 16 Cobblestone*, optional *Obtain 8 Oak Logs*. Earned main rewards: 25 XP and 2 Iron Ingots; earned optional reward: 10 XP.
+2. **The First Tools** (`theageofmachinery:prototype_first_tools`): mandatory *Craft a Crafting Table* (4 planks), optional *Craft a Furnace* (8 cobblestone). Main reward: 50 XP; optional reward: 15 XP.
 
-Install JDK 21 and build from the project root:
+Player login starts the first quest automatically. At present, **the game does not detect the gathering or crafting actions**; an operator uses `/tamruntime progress <objectiveId> <amount>` to simulate an event. The player still manually advances, and the reward system handles independent claims after advancement. The ingredient counts shown in this prototype are text examples; a generalized recipe/ingredient system is pending.
+
+## Architecture
+
+```text
+MinecraftServer
+  └── CampaignRuntime                     one instance per server session
+        ├── BuiltInCampaign / CampaignDefinition
+        │     └── QuestRewardDefinition   ordered, validated server definitions
+        ├── CampaignAdvancementService    one registered QuestManager internally
+        │     └── QuestManager            objective progress; no separate player map
+        ├── RewardManager                 unlock and controlled reward claiming
+        └── CampaignSavedData             one authoritative UUID-keyed player store
+              ├── PlayerQuestProgressCodec
+              └── PlayerRewardInventoryCodec
+
+CampaignPlayerEvents                    server-side login initialization
+MinecraftRewardDelivery                 real ServerPlayer XP/item delivery
+command/*                               operator-only development test harnesses
+```
+
+Advancement validates mandatory objectives, calculates optional rewards, modifies **detached staged copies**, and replaces quest/reward state together using a revision check. Normal claim execution blocks reentrant claims and writes the new claim state without a fallible post-delivery revision check. All live gameplay calls go through the server-owned runtime, which checks server-thread execution and derives player identity from `ServerPlayer`.
+
+**Important limitation:** Minecraft player XP/inventory saves and this mod's `SavedData` saves do **not** form one durable transaction. Abrupt crashes or delivery callbacks that throw after side effects may leave uncertain outcomes. Do not advertise exactly-once reward delivery or crash recovery yet; see [`docs/FUTURE_CORRECTIONS.md`](docs/FUTURE_CORRECTIONS.md).
+
+## Technical requirements and development
+
+- **Minecraft:** Java Edition 1.21.1
+- **Mod loader:** NeoForge 21.1.233 (tested project target)
+- **Java:** JDK 21
+- **Build:** Gradle / ModDevGradle on Windows
+- **Editor:** VS Code
+- **Mod ID:** `theageofmachinery`
+- **Current Java package:** `com.TheAgeOfMachinery` (case-sensitive; do not silently rename)
+- **Create/Create+:** intended compatibility and forthcoming gameplay integration; **Create event/API integration is not yet implemented**.
+
+From the repository root in PowerShell:
 
 ```powershell
 .\gradlew.bat build
-```
-
-The compiled mod JAR is generated under `build/libs/`.
-
-Launch an isolated development client:
-
-```powershell
 .\gradlew.bat runClient
 ```
 
-The development client and your Modrinth profile have separate mods and saves. When testing in Create+, back up the world and match your NeoForge/Create versions before adding or replacing the built mod JAR.
+Build artifacts are under `build/libs/`. The development client does **not** automatically include the mods or saves from a Modrinth Create+ profile. Back up any existing world before testing a new JAR; ensure the loader and mod dependencies match.
 
-## Architecture at a glance
+## Development commands
 
-```text
-quest/
-    QuestDefinition + QuestObjective          immutable definitions
-    QuestProgress                             progress for one quest
-    PlayerQuestProgress                       all quests for one player
-    QuestManager                              current in-memory campaign coordinator
-
-reward/
-    RewardDefinition                          sealed XP / item reward interface
-    ExperienceReward + ItemReward             immutable reward definitions
-    RewardEntry + PlayerRewardInventory       earned and claimed entries
-    RewardManager                             current in-memory claim coordinator
-
-integration/
-    MinecraftRewardDelivery                   ServerPlayer XP / inventory insertion
-
-persistence/
-    PlayerQuestProgressCodec                  quest state <-> NBT
-    PlayerRewardInventoryCodec                entitlement state <-> NBT
-    CampaignSavedData                         SavedData schema v3, keyed by UUID
-
-command/
-    RewardTestCommand                         /tamtest
-    RewardClaimTestCommand                    /tamrewardtest
-    SaveTestCommand                           /tamsavetest
-    QuestPersistenceTestCommand               /tamquestsave
-```
-
-**Important design boundary:** `CampaignSavedData` persists player state, while the current managers still keep separate maps. The next integration work will make world-owned saved data authoritative and coordinate dirty marking. Claim delivery is not yet crash-atomic with Minecraft inventory/XP saving.
-
-## Development-only commands
-
-Commands currently use operator permission level 2 and are meant for disposable test worlds, not normal campaign gameplay:
+These commands are development/test tools and generally require Minecraft **operator permission level 2**. They must be disabled, gated, or removed before public release.
 
 | Command | Purpose |
 |---|---|
-| `/tamtest xp` / `/tamtest item` | Grant isolated test XP or 5 iron ingots |
-| `/tamrewardtest unlock` | Unlock 100 XP, 5 iron ingots, and 50 bonus XP in a temporary in-memory inventory |
-| `/tamrewardtest status` | Display current debug claim states |
-| `/tamrewardtest claim xp`, `iron`, or `bonus` | Claim one entry through the reward manager |
-| `/tamsavetest increment` / `value` | Inspect the simple `SavedData` test counter |
-| `/tamquestsave init`, `status`, `progress main`, `progress optional`, `complete` | Test persisted quest state and objective progress |
+| `/tamruntime status` | Check active server runtime session |
+| `/tamruntime campaign` | Inspect the registered prototype campaign (operator-only; spoiler-sensitive) |
+| `/tamruntime player` | Show the current player's active objectives |
+| `/tamruntime progress <objectiveId> <amount>` | **Simulate** objective progress, not a real gameplay detector |
+| `/tamruntime advance` | Manually finalize the ready quest, unlock earned rewards, and activate the next |
+| `/tamruntime rewards` | Show unlocked reward entries |
+| `/tamruntime claim first <rewardId>` / `second <rewardId>` | Claim an earned reward from the named prototype quest group |
+| `/tamruntime verify` | Check invalid objective/progress/reward operations do not mutate state |
+| `/tamruntime audit` | Read-only overview of connected players' quest/reward group states |
 
-Debug unlock/grant commands must be disabled or gated before public release.
+Additional `/tamtest`, `/tamrewardtest`, `/tamsavetest`, `/tamquestsave`, `/tamrewardsave`, `/tammanagertest`, `/tamadvancetest`, `/tamstatetest`, `/tamquestrevision`, `/tamrewardrevision`, and `/tamfailuretest` commands exist for isolated persistence, claim, concurrency, and failure-injection tests. These are **not** ordinary gameplay commands.
 
 ## Roadmap
 
-- [x] Bootstrap NeoForge project; build and load in the Create+ Modrinth profile.
-- [x] Implement quest and reward domain models, including server-side XP and full-item delivery.
-- [x] Verify XP, items, independent claiming, duplicate rejection and full-inventory behavior in-game.
-- [x] Implement player quest NBT persistence and verify restoration across world restarts.
-- [x] Implement reward inventory codec and `CampaignSavedData` schema v3 (build and commit confirmed).
-- [ ] Verify **reward unlock and claim state** across a world restart (Milestone 2.7.8).
-- [ ] Unify live managers with authoritative world save data and dirty marking.
-- [ ] Implement safe coordinated quest finalization and earned-reward unlocking.
-- [ ] Add JSON quest definitions, deterministic campaign order and Create event detection.
-- [ ] Add spoiler-controlled client synchronization, quest journal, rewards UI and hints.
-- [ ] Add automated tests, multiplayer verification, migration/recovery strategy and release gating for debug commands.
+- [x] Quest/reward domain model and real Minecraft XP/item delivery (2.1–2.6).
+- [x] World persistence and reward claim restoration across restarts (2.7).
+- [x] Persistent manager integration and coordinated quest advancement (2.8–2.9).
+- [x] Staged advancement, revision checks, delivery guards, failure injection, and removal of unconditional storage APIs (2.10).
+- [x] Server runtime lifecycle, built-in prototype registration, automatic login initialization, player-bound operations, and manual runtime verification (2.11).
+- [ ] **2.12 — Real Minecraft gameplay event integration:** crafting detection, item acquisition semantics, objective event routing, and playable prototype without debug progress commands.
+- [ ] **2.13 — Data-driven campaign:** validated JSON quest/reward definitions and stable objectives/targets.
+- [ ] **2.14 — Create integration:** identify real Create recipes, mechanisms, processing, and functional automation milestones.
+- [ ] **2.15 — Client synchronization and UI:** spoiler-safe networking, Quest Journal, reward claiming panel, hint levels, ingredient checklists.
+- [ ] **Release hardening:** automated tests, two-player dedicated-server verification, version/migration tests, delivery recovery policy, debug-command gating.
 
-For prioritized issues, deferred corrections and acceptance criteria, see [`docs/FUTURE_CORRECTIONS.md`](docs/FUTURE_CORRECTIONS.md).
+**Multiplayer test status:** Per-player UUID state and online player auditing are implemented, but **two-player isolation remains pending**. It was not possible to run a test with two accounts at this checkpoint.
+
+See [`docs/FUTURE_CORRECTIONS.md`](docs/FUTURE_CORRECTIONS.md) for tracked corrections, open decisions, and acceptance criteria.
 
 ## License
 
-**All Rights Reserved** under the current generated project configuration. The repository being publicly readable does **not** by itself grant permission to reuse or redistribute its code. Add an explicit license if you decide to open-source it.
+**All Rights Reserved** under the currently recorded project configuration. A public GitHub repository does not automatically grant permission to redistribute or modify the code. Add an explicit license if the intended permissions change.

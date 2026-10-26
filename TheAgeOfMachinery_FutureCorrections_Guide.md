@@ -1,447 +1,498 @@
 # The Age of Machinery — Future Corrections & Implementation Guide
 
 **Project:** The Age of Machinery  
-**Target:** Minecraft Java Edition 1.21.1 · NeoForge 21.1.233 (Create+ compatibility) · Java 21  
-**Package currently used:** `com.TheAgeOfMachinery`  
-**Mod ID:** `theageofmachinery`  
-**Document type:** Living engineering backlog / architecture decision record  
-**Last consolidated:** 2026-10-26 (Milestone 2.4.3)  
+**Target:** Minecraft 1.21.1 · NeoForge 21.1.233 · Java 21 · Create/Create+ integration planned  
+**Mod ID:** `theageofmachinery` · **Java package:** `com.TheAgeOfMachinery`  
+**Document:** Living engineering backlog and architecture decisions  
+**Last consolidated:** **26 October 2026 — Milestone 2.11.6 (build, manual tests, commit reported successful)**
 
-> **Purpose:** Preserve every deferred correction, limitation, and planned follow-up discussed while designing and implementing the quest system. This file deliberately separates **confirmed requirements**, **known deficiencies**, and **future features** so a suggested improvement is not mistaken for already-written code.
->
-> **Scope:** The quest-mod development discussion and relevant earlier design decisions. The author has not inspected the local repository; code status below reflects implementations supplied and reviewed in chat, **not a fresh repository audit**. The user has confirmed that **all builds through Milestone 2.4.3 are successful**; compilation alone does not verify behavioral correctness, tests, committed status, or Minecraft integration.
+> **Status precision:** This guide summarizes developer-reported builds, local in-game testing and commits, not an independent repository/CI audit. **Two-player multiplayer verification was not possible and remains pending.** Manual restart tests confirm normal persistence but **not crash-atomic reward delivery**. No real gameplay objective listeners, Create integration, data-driven JSON content, networking or UI have been completed.
 
 ## How to maintain this guide
 
-- `[ ]` Not completed/verified; `[x]` completed and verified in the repository.
-- **P0** = must fix before exposing progression/rewards to players. **P1** = essential for the first playable implementation. **P2** = polish or extensibility. **P3** = optional later work.
-- Add a link to the commit or PR when closing an item, and note any design decision that changes the rule.
-- **Do not treat UI concealment as secrecy:** future quest/reward data must also be absent from unauthorized client network payloads.
+- `[x]` = implemented and reported verified for the stated scope; `[~]` = partially implemented, validated only for some cases, or follow-up required; `[ ]` = open/not verified.
+- **P0:** correctness or safety critical for exposed gameplay/reward claims; **P1:** first playable release; **P2:** improvements; **P3:** optional decision.
+- Keep existing issue IDs stable across updates. A closed issue does not close other explicitly linked risks (e.g., verified normal delivery does not close crash recovery).
+- Record test limitations rather than labeling untested scenarios as passed; update statuses after code *and* acceptance tests, not builds alone.
 
 ---
 
-## 1. Confirmed product and gameplay rules (design baseline)
+## 1. Confirmed gameplay rules (design baseline)
 
-These are **decisions**, not open questions. Implementations must preserve them.
+These are agreed product rules; `[x]` below means **decision confirmed**, not necessarily a finished UI feature.
 
-- [x] **Create-first and focused:** the mod is exclusively designed around the Create gameplay loop, rather than a generic multi-mod quest engine.
-- [x] **Per-player progression:** each player has independent quest state, including in multiplayer; use UUID ownership and server-side authority.
-- [x] **Exactly one active quest:** completed quests remain in history; locked/future quests do **not** require player-progress entries.
-- [x] **Main and optional objectives:** main objectives are required; optional objectives offer extra rewards but cannot block advancement.
-- [x] **Manual advancement:** satisfying all main objectives *enables* advancement; it does not automatically advance. `ReadyToAdvance` is derived from objective progress, not a separately persisted quest state.
-- [x] **Optional-objective window:** a player may continue working on optional objectives after finishing the main objectives, until they manually advance. Advancing finalizes the quest and forfeits unfinished optional objectives.
-- [x] **Strict spoiler secrecy:** do not reveal future quests or any reward for the current quest. Rewards become discoverable **only when the player advances/finalizes the quest**; show only rewards actually earned. The next quest is revealed only when unlocked.
-- [x] **Per-entry reward claims:** after finalization, earned rewards are listed in a dedicated UI grouped by originating quest. Each entry can be claimed independently, **but not partially** (e.g., claim `100 XP`, `50 XP`, or `5 cogwheels` as three separate indivisible entries).
-- [x] **Unclaimed rewards persist:** changing or finishing later quests must not delete unclaimed reward entries.
-- [x] **Full delivery or no delivery:** if the inventory cannot accept all 5 cogwheels, reject that reward claim entirely and leave it unclaimed; never give 3/5 and consider it claimed. XP is awarded in full.
-- [x] **Hints and ingredients:** spoiler-controlled progressive hints (three levels planned). On the *first* request to craft/build a particular item or machine, show a materials/ingredients checklist with quantities; these are guidance, **not reward previews**.
-- [x] **Avoid arbitrary grind:** support exploration and multiple engineering solutions where practical; automate detection of gameplay actions rather than relying on manual completion wherever possible.
-
-`[x]` in this section means **decision agreed**, not feature implemented.
+- [x] Create-focused, discovery-first campaign; avoid arbitrary grind and reward engineering solutions.
+- [x] Per-player UUID ownership and server-side authority; intended for multiplayer.
+- [x] One active quest, with completed history and no need to populate future quest progress records.
+- [x] Mandatory objectives gate **manual** advancement; optional objectives can continue until the player advances.
+- [x] Optional progress is frozen on advancement; unfinished optional bonuses are forfeited.
+- [x] Strict spoiler behavior: no future quests and **no current quest rewards** revealed before finalization; only earned rewards afterward.
+- [x] Rewards grouped by originating quest, independently claimable in full, retained across later quests and world restarts.
+- [x] Item delivery is all-or-nothing; do not consume a reward if the entire quantity cannot fit.
+- [x] Three levels of spoiler-controlled hints planned; first-time crafting/building objectives require a materials checklist with quantities.
+- [x] Objective progress should ultimately come from validated gameplay events, not client-supplied quantities.
 
 ---
 
-## 2. Existing code covered in milestones (review baseline)
+## 2. Milestone and verification ledger
 
-### Milestone 2.1 — core quest model
+| Milestone | Implementation | Developer-reported verification |
+|---|---|---|
+| **2.1–2.4** | Quest state, objectives, definitions, per-player progress, reward types/inventories/managers | Built; domain behavior exercised later |
+| **2.5–2.6** | Real Minecraft XP/item delivery; separate earned entries; all-or-nothing inventory insertion; debug claiming | In-game XP/items, full-inventory failure and retry, duplicate rejection passed |
+| **2.7.1–2.7.7** | Minecraft `SavedData` and NBT codecs; save format v3; quest and reward storage | Built; quest persistence verified across restarts |
+| **2.7.8** | Reward persistence and claim-state restart tests | **Passed**: claimed/unclaimed/restored; no repeat grant on normal restart |
+| **2.8.1–2.8.3** | Persistent `QuestManager`/`RewardManager` and integrated manager tests | **Passed** including two-quest persistence/reward test |
+| **2.9.1–2.9.3** | `QuestRewardDefinition`, coordinated completion, optional bonuses and next quest | **Passed**: basic/bonus scenarios, campaign completion, normal restart |
+| **2.10.1–2.10.3** | Unified `PlayerState`, staged transaction, deep-copy snapshots, revision-checked commit | **Passed** including detached-state and stale-commit tests |
+| **2.10.4A–2.10.4B** | Revision-checked quest/reward writes and synchronous claim guard | **Passed** including failed delivery, reentrancy, normal restart |
+| **2.10.5–2.10.6B** | Removed legacy lifecycle bypasses/unconditional store methods, failure injection, isolated debug migration | **Passed**: conflicting entitlements, stale commit, pre-delivery exception, recovery of test harness |
+| **2.11.1–2.11.2** | Per-server `CampaignRuntime`; built-in two-quest definitions and registration | **Passed** across server restarts; stable campaign ordering |
+| **2.11.3–2.11.5** | Runtime operations with real player UUID, automatic login initialization, `ServerPlayer` authority, server thread checks | **Passed**: prototype progression, claims, reconnect, invalid operations |
+| **2.11.6** | `/tamruntime verify` negative-path checks and `/tamruntime audit` | **Single-player tests passed and committed. Two-player test NOT performed.** |
 
-- [x] `QuestState`: `LOCKED`, `ACTIVE`, `COMPLETED`.
-- [x] `QuestObjective`: immutable `record` with ID, description, target count, optional flag; validation.
-- [x] `QuestDefinition`: immutable `record` with ID, title, description, ordered objectives; checks duplicate objective IDs and requires at least one main objective; `List.copyOf()`.
-- [x] `QuestProgress`: mutable quest state and objective counts; guard against non-active changes; progress cap; computed `canAdvance()`; explicit `complete()`; `Map.copyOf()` snapshot.
-- [x] Milestone 2.1 compiled successfully.
+**Current state:** Runtime owns one advancement service (with its single registered `QuestManager`) and one reward manager, both backed by the same `CampaignSavedData`. Save schema remains **`FormatVersion = 3`** with `TestValue`, `Players`, and `RewardInventories`. All real prototype progression currently comes from development commands, not Minecraft events.
 
-### Milestone 2.2 — player progress
-
-- [x] `PlayerQuestProgress`: UUID, map of unlocked `QuestProgress` instances, nullable active quest ID.
-- [x] Activation, active/unlocked lookup, snapshots, objective updates, completion, completed-history checks, and `hasActiveQuest()`.
-- [x] Milestone 2.2 compiled successfully and was prepared for a commit.
-
-### Milestone 2.3 — initial campaign manager
-
-- [x] User reports a **successful build** through this milestone; commit completion has **not** been independently verified.
-- [x] `QuestManager`: ordered quest registration, definition lookup, per-player progress lookup/creation, start first quest, update active objective, check advancement, complete current quest, locate/activate next quest.
-
-### Milestone 2.4.1 — immutable reward definitions
-
-- [x] `RewardDefinition`: Java 17+ `sealed interface` permitting `ExperienceReward` and `ItemReward`, with `id()` / `amount()` contract.
-- [x] `ExperienceReward`: record with positive XP and validated ID.
-- [x] `ItemReward`: record with nonblank item ID, positive total quantity, and reward ID; item ID is still a `String`, not a validated Minecraft registry key.
-- [x] User confirms **successful build**.
-
-### Milestone 2.4.2 — per-player earned reward inventory
-
-- [x] `RewardClaimState`: `AVAILABLE`, `CLAIMED`.
-- [x] `RewardEntry`: immutable record containing quest ID, reward definition, and claim state, with `rewardId()` / `isClaimed()`.
-- [x] `PlayerRewardInventory`: UUID owner; insertion-ordered quest groups via `LinkedHashMap`; `unlockRewards()` checks duplicate reward IDs within a quest; reward lookup, unlocked-quest checks, unmodifiable insertion-ordered snapshots.
-- [x] User confirms **successful build**.
-
-### Milestone 2.4.3 — initial claiming contract and state transition
-
-- [x] `RewardClaimResult`: `SUCCESS`, `NOT_FOUND`, `ALREADY_CLAIMED`, `DELIVERY_FAILED`.
-- [x] `RewardDelivery`: `boolean deliver(RewardDefinition reward)` abstraction for a future Minecraft-specific delivery implementation.
-- [x] Package-private `PlayerRewardInventory.claimReward()`: locate unlocked entry, refuse already-claimed claims, invoke delivery callback, then replace immutable `RewardEntry` with `CLAIMED` after reported success.
-- [x] User confirms **successful build**.
-- [ ] Delivery is **not implemented** against Minecraft yet, and the method is **not proven crash-safe or rollback-safe**. No automated behavior tests have been reported.
-
-**Implementation accuracy check:** We discussed replacing the original overflow-safe `long` progress calculation with a safe `int`-only *remaining-capacity* calculation, rewriting a Stream predicate as a `for` loop, and strengthening `QuestDefinition` description validation. The user has reported successful builds for all classes, but those specific local edits and commit state have not been independently inspected. See C-001 and C-002.
+**Explicit test gap:** Multiplayer architecture uses UUID isolation and a read-only audit; the user **cannot currently test two players**, so no claim is made about verified simultaneous independent progression. No automated test suite or crash-atomicity result is reported.
 
 ---
-
-## 3. P0 — Correct before wiring up the Advance Quest button
+## 3. Quest advancement, authority and persistence
 
 ### Q-001 — One authoritative quest advancement operation
 
-**Status:** `[ ]` **P0** · Affected: `QuestManager`, `PlayerQuestProgress`, `QuestProgress`, future reward manager.
+**Status:** `[~]` **P0**
 
-**Problem:** Current methods `completeActiveQuest()` and `activateNextQuest()` can be called separately. `completeActiveQuest()` finalizes the quest **without invoking `PlayerRewardInventory.unlockRewards()`**. Interruption between the actions could permanently lose earned rewards or leave progression inconsistent.
+**Current evidence:** Staged `CampaignAdvancementService.advanceQuest()` calculates earned rewards, prepares detached quest/reward objects, and commits both together with one revision-checked player-state replacement. In-game scenarios and failure-injection tests passed; `QuestManager` direct complete/next methods were removed.
 
-**Required correction:** Add one server-authoritative progression operation that validates the active quest and required objectives, determines earned main/optional rewards, records those reward entitlements, finalizes the quest, activates the correct next quest (or marks campaign completion), and persists the resulting player state. Design and test interruption/retry handling before enabling the real UI button.
-
-**Acceptance:** An advancement request never yields a completed quest missing its earned reward entitlements; retrying does not duplicate those entitlements; future quest activation cannot bypass eligibility.
+**Remaining / acceptance:** Normal in-memory operation is coordinated; a process crash during saving and delivery remains outside these guarantees (P-005). Only the runtime should expose advancement to real players.
 
 ### Q-002 — Determine next quest from authoritative player state
 
-**Status:** `[ ]` **P0** · Affected: `QuestManager.activateNextQuest(UUID, String)`, `getNextQuestDefinition()`.
+**Status:** `[x]` **P0**
 
-**Problem:** The public method trusts a caller-supplied `completedQuestId`. We explicitly flagged it as insufficient to prevent progression mistakes or campaign skipping.
+**Current evidence:** Advancement derives the current active quest and registered successor from server-owned state; caller-supplied completed quest IDs are no longer used for production advancement. Legacy `QuestManager.activateNextQuest()` was removed in 2.10.5.
 
-**Required correction:** Derive the predecessor/current progression position on the server using the player's recorded history and registered campaign order; validate the exact eligible successor. Do not allow arbitrary completed IDs from client requests to select a future quest. Add tests for stale, reordered, replayed, and skipped IDs.
-
-**Acceptance:** Only the actual next quest can be activated, at most once, regardless of supplied or replayed inputs.
+**Remaining / acceptance:** Maintain the server-side ordering check when JSON definitions and client requests are introduced; test reordered/invalid content migrations separately.
 
 ### Q-003 — No reward information before quest finalization
 
-**Status:** `[ ]` **P0** · Affected: quest/reward API, network payloads, journal UI.
+**Status:** `[~]` **P0**
 
-**Problem:** Reward definitions must remain undisclosed even while the current quest is active and even if all main objectives are complete. Hiding widgets alone is insufficient if the client receives all reward data.
+**Current evidence:** All current prototype campaign definitions and reward calculations remain server-side. `CampaignRuntime.getUnlockedRewards()` returns only earned rewards; there is no player-facing UI or gameplay network payload yet. Operator-only `/tamruntime campaign` intentionally displays all prototype IDs for diagnostics.
 
-**Required correction:** Keep full quest/reward definitions server-side. Create restricted client-facing DTO/payloads containing the active quest's permitted title/description/objectives/hints/ingredient lists; previously completed quest history; and **only already-unlocked** reward entitlements. Never send future quest definitions, quest order, undisclosed rewards, or hidden objective data intended to remain secret.
-
-**Acceptance:** Inspecting client messages/state before advancement reveals neither future quests nor rewards of the active quest; earned rewards appear after successful finalization.
+**Remaining / acceptance:** Create restricted server-to-client DTOs showing only authorized active quest/history and already-unlocked rewards; never send the current quest reward list or future definitions. Local client JAR content cannot be considered secret (P-007).
 
 ### Q-004 — Restrict access to mutable player and quest state
 
-**Status:** `[ ]` **P0** · Affected: `QuestManager.getOrCreatePlayerProgress()`, `PlayerQuestProgress.getQuestProgress()`, `getActiveQuestProgress()`, `getQuestProgressSnapshot()`, `QuestProgress.activate()/addProgress()/complete()`.
+**Status:** `[~]` **P0**
 
-**Problem:** `Map.copyOf(quests)` makes the map unmodifiable, **not its `QuestProgress` values**. `Optional<QuestProgress>` still exposes mutable quest objects. Current public methods let other code bypass `QuestManager` checks.
+**Current evidence:** `CampaignSavedData` now returns detached deep copies and snapshots, uses copy-on-write, and rejects stale revision commits; unconditional `storePlayer...` APIs were removed. Manager lifecycle bypass methods were removed in 2.10.5.
 
-**Required correction:** Separate read-only snapshots/views from server-side mutation APIs. Limit mutable `QuestProgress` access, ideally through package-private/internal methods or a dedicated controlled service. Avoid exposing mutable state across network boundaries. `QuestProgress.getObjectiveProgressSnapshot()` is safe for its immutable integer values, but verify all future value types.
-
-**Acceptance:** Client-facing and general caller APIs cannot directly activate, advance, or mutate quest progress by holding a returned reference.
+**Remaining / acceptance:** Domain objects remain mutable and trusted storage methods remain public in Java; avoid routing UI/network code to raw state. Finish a controlled public API boundary and protect save initialization/transaction methods against misuse.
 
 ### Q-005 — Server validates objective progress and reward claims
 
-**Status:** `[ ]` **P0** · Affected: gameplay events, `QuestManager.addObjectiveProgress()`, future reward/network handlers.
+**Status:** `[~]` **P0**
 
-**Problem:** `addObjectiveProgress()` accepts an objective ID and arbitrary count. The current method is intended only for trusted server code, and must never become a client-accessible increment endpoint.
+**Current evidence:** Runtime operations now require `ServerPlayer` identity, verify server ownership/online player for gameplay mutations, and enforce server-thread execution. Invalid objective IDs, zero/negative amounts and nonexistent reward claims were rejected without revision change in 2.11.6.
 
-**Required correction:** Recognize validated Minecraft/Create server events, match them to active objectives, and calculate accepted increments server-side. Validate player UUID from the server connection rather than client-supplied identity. Reward claim requests should contain only entitlement IDs; validate owner, unlocked/unclaimed status, and delivery capacity server-side.
-
-**Acceptance:** Crafted packets, repeated UI actions, and arbitrary amount/quest IDs cannot award progress, unlock content, or duplicate rewards.
+**Remaining / acceptance:** Only trusted server-side crafting, collection, and Create events may call `addObjectiveProgress`; the later client protocol may submit advance/claim intent but never arbitrary progress counts or UUIDs. Test malicious/replayed packets when networking exists.
 
 ### Q-006 — Idempotent reward claims, atomic full-stack item delivery
 
-**Status:** `[~]` **P0 — claim-state skeleton exists; guarantee not achieved** · Affected: reward entitlement model, claim workflow, inventory/XP delivery, persistence.
+**Status:** `[~]` **P0**
 
-**Problem:** The reward UI offers independently claimable entries but **never** partial claims. Inventory overflow and duplicated click/network events must not lead to partial or repeated grants. The new `claimReward()` callback **trusts `delivery.deliver()`** to be all-or-nothing; there is not yet a real implementation or a transaction/rollback mechanism. After a reported success, the in-memory entry is marked claimed, but a crash before persistence could permit a duplicate award after restart.
+**Current evidence:** Whole-reward inventory preflight and retry were verified in-game. `executeRewardClaim()` rejects duplicate/reentrant claims, blocks conflicting writes, and updates the claim state without a post-delivery revision check. Failed and successful claim states survive restarts.
 
-**Required correction:** Assign stable entitlement IDs unique to player + quest + reward entry. Validate before delivery, ensure inventory can accept the entire item count (including legal stack splitting across slots if needed), and update claim state exactly once in a controlled server operation. The delivery implementation must not return `false` **after** granting a partial quantity. Handle XP as an indivisible entry. Enforce claim execution on the authoritative server thread; test double-clicks/replayed packets and inventory changes after capacity preflight. Design crash/recovery consistency for inventory/XP versus saved claim state; Minecraft inventory and mod saved data may have different persistence timing, so do **not** assume a database-style transaction exists.
-
-**Acceptance:** Claiming `5 cogwheels` grants exactly five or zero; claiming `100 XP` grants exactly 100 or zero; replay never awards more than once.
+**Remaining / acceptance:** No durable atomicity between Minecraft XP/items and `SavedData`; callback exceptions after side effects are uncertain. Define recovery/quarantine policy and test oversized stacks, exotic inventory states, and repeated network requests (P-005).
 
 ### Q-007 — Per-player persistent save/load and consistency
 
-**Status:** `[ ]` **P0** · Affected: NeoForge saved data, player login/logout, world shutdown, reward inventory.
+**Status:** `[~]` **P0**
 
-**Problem:** Current `QuestManager` stores players only in an in-memory `Map<UUID, PlayerQuestProgress>`. No server persistence exists yet.
+**Current evidence:** `CampaignSavedData` v3 persists UUID-keyed quest/reward state. Normal restarts, returning-player login, staged advancement, earned claims, and server runtime recreation were all manually verified through 2.11.6.
 
-**Required correction:** Implement world/server-owned persistent player progression and reward entitlements, keyed by UUID; handle state restoration, dirty marking, restarts, and player rejoining. Validate loaded values: active ID must exist and map to exactly one `ACTIVE` quest; no completed quest can become active; progress values must be within each objective's allowed range; claimed rewards remain claimed. Plan schema/version migration for future JSON or save format updates. Ensure world-specific isolation and lifecycle cleanup.
-
-**Acceptance:** Restarting the world/server preserves player objectives, current quest, completed quests, earned/unclaimed/claimed rewards, without granting duplicate progress or corrupting states.
+**Remaining / acceptance:** Two-player verification is pending (I-003). Schema migration, corrupt-data recovery, and definition-version compatibility need explicit tests (P-003).
 
 ---
 
-## 4. P1 — Reward system and UI
+## 4. Rewards, delivery and user-facing features
 
 ### R-001 — Reward definitions and entitlement inventory
 
-**Status:** `[~]` **P1 — partially implemented** · Actual files: `reward/RewardDefinition.java`, `ExperienceReward.java`, `ItemReward.java`, `RewardClaimState.java`, `RewardEntry.java`, `PlayerRewardInventory.java`, `RewardClaimResult.java`, `RewardDelivery.java`; `RewardManager.java` is **not yet implemented**. (`[~]` means started, not closed.)
+**Status:** `[x]` **P1**
 
-**Implemented:** Sealed reward hierarchy, validated immutable XP/item definitions, per-player entries grouped by quest, available/claimed states, duplicate ID checks within a quest, lookup and snapshots, and initial `claimReward()` transition. Successful compilation confirmed by user.
+**Current evidence:** XP/item reward records, entitlements grouped by quest, immutable claim entries, optional reward calculations, SavedData persistence, and real Minecraft delivery are implemented. In-game tests cover unlocking, claiming, duplicate rejection, inventory-full refusal, and restart restoration.
 
-**Remaining:** Associate rewards with quest definitions and main/optional objective sources; freeze earned reward entries during authoritative quest advancement; integrate a real Minecraft delivery backend; persist player entitlements/claim states; preserve globally unambiguous claim identity (quest ID + reward ID, with player ownership); support future reward types intentionally rather than using an unused `RewardType` enum.
-
-**Acceptance:** Example: a quest awarding `100 XP`, `5 cogwheels`, and `50 XP` optional unlocks **three** independently claimable entries only if that optional objective was completed before advancement.
+**Remaining / acceptance:** Future reward types and client presentation are separate enhancements; crash recovery is tracked by P-005 and optional-source metadata by R-007.
 
 ### R-002 — Earned optional rewards are frozen at advancement
 
-**Status:** `[ ]` **P1**.
+**Status:** `[x]` **P1**
 
-**Required:** Determine completed optional objectives when the player clicks Advance, create entitlements only for those, forfeit incomplete optional rewards, and reject post-completion progress changes. Do not accidentally award optional rewards for a partially complete objective unless the definition explicitly says so (not currently planned).
+**Current evidence:** `QuestRewardDefinition.calculateEarnedRewards()` selects optional rewards only for completed objectives while a quest is active. Staged advancement freezes exactly the earned entries. Basic/bonus scenarios were tested in 2.9.3 and 2.10.2.
+
+**Remaining / acceptance:** Preserve this rule when switching to JSON and when integrating actual gameplay events. No optional progress is accepted once its quest is finalized.
 
 ### R-003 — Rewards UI and quest grouping
 
-**Status:** `[ ]` **P1** · Proposed: `client/QuestJournalScreen.java` plus a rewards screen or panel.
+**Status:** `[ ]` **P1**
 
-**Required:** Group earned reward entries by originating quest. Show unclaimed and claimed status, source (main/optional), type, quantity, and a per-entry **Claim** action. Permit claims at any later time, including after many other quests. Show inventory-full rejection without altering entitlement state. The UI prototype discussed is illustrative only, not implemented in Minecraft.
+**Current evidence:** The persistent reward groups and individual claim states already exist in server data, but no client rewards screen is implemented.
+
+**Remaining / acceptance:** Implement a grouped earned-rewards view with separate Claim actions, quantities, claimed/unclaimed indicators, helpful inventory-full feedback, and no current/future-quest reward previews.
 
 ### R-004 — Quest journal, progress, and controlled reveal
 
-**Status:** `[ ]` **P1**.
+**Status:** `[ ]` **P1**
 
-**Required:** Active quest title/description/main and optional objectives, progress and Ready-to-Advance state, manual Advance button, previously completed history, progressive hints, first-introduction ingredients checklist, and post-finalization reward reveal. **No** future quest preview, future rewards, or current rewards.
+**Current evidence:** The runtime exposes server-side active-quest information, but no Quest Journal UI exists.
+
+**Remaining / acceptance:** Build a journal with active title/description/main and optional progress, ready-to-advance state, manual Advance action, completed history, three-level hint controls, and first-use ingredient lists. Apply network-level spoiler filtering.
 
 ### R-005 — Network protocol and client synchronization
 
-**Status:** `[ ]` **P1**.
+**Status:** `[ ]` **P1**
 
-**Required:** Server → client restricted quest view and unlocked entitlement updates; client → server intent messages (advance, claim, request permissible hints), not arbitrary state changes. Synchronize after login, world load, objective progress changes, successful advancement, and reward claims. Define handling of stale/repeated messages and reconnection.
+**Current evidence:** No client↔server campaign payloads or synchronization system is implemented. Debug commands remain server/permission-gated.
 
+**Remaining / acceptance:** Define server-to-client minimal authorized views and client-to-server advance/claim/hint intent packets. Derive player from packet sender; validate lifecycle and sync on join, objective changes, advancement, claims and reconnect.
 
 ### R-006 — Separate reward claiming from Minecraft delivery, and enforce complete delivery
 
-**Status:** `[ ]` **P0** · Affected: `RewardDelivery`, `PlayerRewardInventory.claimReward()`, future NeoForge `RewardManager`/delivery implementation.
+**Status:** `[~]` **P0**
 
-**Current model:** `RewardDelivery.deliver()` returns a `boolean`. `claimReward()` updates the claim state only if `deliver()` returns `true`. This is a useful domain boundary but **not** a guarantee that failed delivery has no side effects.
+**Current evidence:** `MinecraftRewardDelivery` preflights inventory capacity and uses whole-item insertion; tests verified 5 iron ingots, full-inventory rejection and retry. Reward claims execute through a guarded server-side operation.
 
-**Required correction:** Implement full-capacity preflight for item rewards (including stack limits and multiple available slots), all-or-nothing insertion, XP award to the authenticated `ServerPlayer`, and clear rejection messages. Prevent inventory change between preflight and commit, and never run reward delivery on a client or untrusted thread. Decide whether callback is replaced by a richer result enum (e.g., `INVENTORY_FULL`) for accurate UI feedback. Review any rewards larger than one legal item stack.
-
-**Acceptance:** A claim of `5` items either grants exactly `5` and marks claimed, or grants `0` and remains available. `100 XP` behaves equivalently. Automated failure injection tests cover delivery rejection.
+**Remaining / acceptance:** Test amounts exceeding a stack, nonstandard stack limits, and non-ordinary inventories. Consider actionable delivery results beyond `boolean`. Exception-after-side-effect and crash recovery remain unresolved.
 
 ### R-007 — Stable reward identity, metadata, and optional-source accounting
 
-**Status:** `[ ]` **P1** · Affected: `RewardEntry`, `PlayerRewardInventory`, future quest JSON/schema.
+**Status:** `[~]` **P1**
 
-**Current model:** `RewardEntry` stores only `(questId, reward, state)`; there is no explicit origin type (`MAIN` vs `OPTIONAL`) or optional objective ID. Duplicate IDs are checked **within a quest**; this is sufficient only if claim requests always include quest ID and reward ID, bound to an authenticated player.
+**Current evidence:** Main and optional rewards are calculated from validated `QuestRewardDefinition` maps and unlocked under `(player UUID, quest ID, reward ID)`. Duplicate IDs within a quest are rejected. `RewardEntry` does not explicitly encode main/optional source metadata.
 
-**Required correction:** Define stable per-quest reward IDs, a canonical entitlement key, source metadata and optional-objective association. Ensure completed-quest rewards cannot be regenerated with different payloads on retry or save recovery. Decide whether a zero-reward quest should still record a finalized entitlement group: current `unlockRewards(questId, List.of())` records an empty group and returns success.
-
-**Acceptance:** Two XP rewards in the same quest remain distinct; one optional reward is unlocked only when its associated objective is complete; client labels are truthful without revealing locked reward data.
+**Remaining / acceptance:** Define stable source metadata for UI/JSON, preserve historical reward amounts across definition updates, and decide semantics of zero-reward groups. Do not reconstruct earned rewards from new definitions on reload.
 
 ### R-008 — Immutable claim-state replacement and storage consistency
 
-**Status:** `[ ]` **P1** · Affected: `PlayerRewardInventory`, future serialization code.
+**Status:** `[x]` **P1**
 
-**Current model:** `RewardEntry` is an immutable record. On successful delivery, `claimReward()` creates a new list, replaces the entry, and installs `List.copyOf(updatedEntries)` into the `LinkedHashMap`.
+**Current evidence:** Immutable `RewardEntry` replacement, `LinkedHashMap` reward grouping, detached storage snapshots, controlled claim updates, and v3 save/load were manually verified across world restarts.
 
-**Required correction:** Keep all inventory mutation in trusted server ownership; ensure every successful unlock/claim marks persistence dirty; validate loaded entries and avoid leaking unpublished reward definitions. Test that ordering survives updates and save/load. `Collections.unmodifiableMap(new LinkedHashMap<>(...))` gives a snapshot only because the stored lists and their entries are unmodifiable/immutable—preserve that invariant.
-
-**Acceptance:** Claiming one entry doesn't alter other entries, quest-group ordering, or old snapshots; restart restores each claimed/unclaimed state correctly.
+**Remaining / acceptance:** A dedicated automated ordering test is still worthwhile; complex recovery and migration remain tracked separately.
 
 ---
 
-## 5. P1 — Quest definitions and content
+## 5. Quest definitions and content
 
 ### D-001 — JSON-driven quest definitions
 
-**Status:** `[ ]` **P1**.
+**Status:** `[ ]` **P1**
 
-**Required:** Move hardcoded registrations to JSON quest definitions, immutable after parsing/validation. Define a schema with stable namespaced IDs such as `theageofmachinery:first_settlement`, display metadata, main/optional objectives, target counts, hints, ingredient requirements, reward entries, and campaign sequencing. Validate duplicate IDs, missing prerequisites, invalid items/targets, and cycles if branching is introduced. Decide whether data pack reload is supported; handle already-saved progress when definitions change.
+**Current evidence:** Prototype quests are currently defined in Java using `BuiltInCampaign.create()`; there is no JSON loader.
+
+**Remaining / acceptance:** Create a validated data-driven schema for stable IDs, objective types/targets, optional/main rewards, hints, ingredient lists and explicit order. Decide reload behavior, migration, and compatibility with existing saves.
 
 ### D-002 — Stable IDs and Minecraft registry types
 
-**Status:** `[ ]` **P1**.
+**Status:** `[ ]` **P1**
 
-**Problem:** Current APIs use `String` IDs. This is sufficient for the Java model but error-prone when integrating Minecraft registries.
+**Current evidence:** Quest/objective/reward IDs currently use strings, while Minecraft item delivery parses resource locations through item registries.
 
-**Required:** Evaluate `ResourceLocation` for quest IDs, objective targets, item IDs, and reward identities where appropriate. Establish explicit serialization rules and a stable ID policy so changing user-facing titles doesn't invalidate saves. Avoid prematurely converting unrelated display strings into registry IDs.
+**Remaining / acceptance:** Introduce resource-aware, validated target specifications and stable save keys; do not let renaming display text change persisted IDs. Validate Create registry entries once Create dependency is configured.
 
 ### D-003 — Objective types and event matching
 
-**Status:** `[ ]` **P1**.
+**Status:** `[ ]` **P1**
 
-**Problem:** `QuestObjective` currently contains only ID, description, count, and optional flag. The game cannot infer from these whether to count crafting, placing, processing, or transport.
+**Current evidence:** Current `QuestObjective` contains ID, description, required count and optional flag; it does not express which Minecraft action or registry target it should match.
 
-**Required:** Introduce objective type + target specification and dispatch verified server events to matching active objectives. Initial candidates: item crafting, block placement, recipe processing, item transportation, and automation milestones. Avoid brittle item-only heuristics where multiple Create machines can produce the same output.
+**Remaining / acceptance:** Add objective type/target metadata and trusted event matching (craft, acquire, place, process, automate). Count verified server events only; keep old objective IDs stable across saves.
 
 ### D-004 — Campaign ordering and registration guarantees
 
-**Status:** `[ ]` **P1**.
+**Status:** `[~]` **P1**
 
-**Problem:** `registerQuest()` implicitly makes registration order equal campaign order. With JSON reloads or unordered discovery, this may become nondeterministic.
+**Current evidence:** `CampaignDefinition` validates nonempty ordered lists and duplicate quest IDs. A server-scoped runtime registers a deterministic two-quest built-in campaign on startup; basic/final advancement passed.
 
-**Required:** Use an explicit campaign order/prerequisite structure, validate missing/duplicate entries, and define deterministic first-quest selection and end-of-campaign handling. Keep definitions and ordering private to the server.
+**Remaining / acceptance:** When JSON replaces hardcoded definitions, validate deterministic ordering, missing references, content changes and possible branching/prerequisites. Never expose full order to ordinary clients.
 
 ### D-005 — First-use ingredient checklist
 
-**Status:** `[ ]` **P1**.
+**Status:** `[~]` **P1**
 
-**Required:** When the active quest first asks the player to create an item/machine, expose required ingredients and quantities. Decide whether checklists are authored in quest JSON, derived from recipes, or a hybrid for multi-step Create recipes. Only reveal materials that are allowed at the current quest stage. Do not confuse recipe ingredients with hidden quest rewards.
+**Current evidence:** Prototype descriptions list 4 planks for a crafting table and 8 cobblestone for a furnace, reflecting the first-use materials rule. This is authored text, not an ingredient-list subsystem.
+
+**Remaining / acceptance:** Define structured ingredient quantities, Create multi-stage recipes, and permitted client disclosure. Render a checklist when first asking to craft/build a given item or machine.
 
 ### D-006 — Progressive hints without spoilers
 
-**Status:** `[ ]` **P1**.
+**Status:** `[ ]` **P1**
 
-**Required:** Define up to three increasingly specific hint levels, unlocked on request (not by leaking full campaign data). Preserve the discovery-based campaign; no future-tech spoilers in journal, hints, or network payloads. Support the Create+ 1.21.1 environment, with recipe/Ponder guidance for currently permitted technology.
+**Current evidence:** Three progressive hint levels are a confirmed product requirement; no hint system is implemented.
+
+**Remaining / acceptance:** Add per-objective permitted hint tiers and server-controlled disclosure. Avoid future quest or reward leaks and use recipe/Ponder guidance only when permitted.
 
 ---
 
-## 6. P1/P2 — Domain-model correctness and API hardening
+## 6. Domain model and API correctness
 
 ### C-001 — Review `QuestProgress.addProgress()` cap calculation
 
-**Status:** `[ ]` **P1** · Affected: `QuestProgress.addProgress()`.
+**Status:** `[~]` **P1**
 
-**Discussion:** We initially used `(int) Math.min((long) required, (long) current + amount)` to prevent int overflow. User preferred simpler `int` math, so we chose a safe *remaining-capacity* calculation:
+**Current evidence:** The `int`-only remaining-capacity calculation was chosen and repeated progression tests passed. The current local source was not independently inspected for this document.
 
-```java
-int current = getObjectiveProgress(objective.id());
-int remaining = objective.requiredAmount() - current;
-int updated = current + Math.min(amount, remaining);
-```
-
-**Required:** Verify that this is the actual local code. It is overflow-safe **only if** saved/current progress is kept within `0..requiredAmount` and `amount > 0`. Enforce these invariants when deserializing save data. Do not replace this with naïve `Math.min(required, current + amount)`; addition can overflow *before* clamping.
+**Remaining / acceptance:** Audit the actual `QuestProgress` implementation and deserialized bounds. Avoid `current + amount` overflowing before clamping; reject impossible saved counts.
 
 ### C-002 — Ensure `QuestDefinition` description validation matches decision
 
-**Status:** `[ ]` **P2** · Affected: `QuestDefinition` compact constructor.
+**Status:** `[~]` **P2**
 
-**Discussion:** We changed the intended validation from `Objects.requireNonNull(description, ...)` to `if (description == null || description.isBlank()) ...` so every quest has a nonblank description. Verify this local code change; `Objects.requireNonNull()` alone accepts `""` and whitespace.
+**Current evidence:** Nonblank `QuestDefinition` descriptions were part of the code supplied and built successfully; no independent repository inspection is recorded.
+
+**Remaining / acceptance:** Keep null/blank validation and verify with an automated constructor test.
 
 ### C-003 — Trust boundary around `QuestProgress` methods
 
-**Status:** `[ ]` **P1**.
+**Status:** `[~]` **P1**
 
-**Problem:** `QuestProgress.addProgress(QuestObjective, amount)` does not itself prove that the objective belongs to that quest; `PlayerQuestProgress.addObjectiveProgress()` currently checks membership. Other callers could bypass this validation through public methods.
+**Current evidence:** Normal runtime objective updates validate the active registered quest, ID, count and revision; storage returns detached copies.
 
-**Required:** Restrict call sites/accessibility and make objective identity validation part of a trusted, definition-aware mutation path. Consider defensive consistency checks on `canAdvance()` and `complete()` for saved/corrupted states.
+**Remaining / acceptance:** Public mutable `QuestProgress`/`PlayerQuestProgress` functions remain usable by trusted Java callers. Enforce service ownership before exposing any network path; test inconsistent loaded definitions.
 
 ### C-004 — Return types and missing-value conventions
 
-**Status:** `[ ]` **P2**.
+**Status:** `[~]` **P2**
 
-**Current decision:** Use `Optional<QuestProgress>` for lookup results that may be absent. Favor explicit `isPresent()` / guarded `.get()` when learning; do not force `.ifPresent(lambda)` or Stream chains where a loop is clearer. Use `null` internally for absent `activeQuestId` only while invariants are controlled. Consider read-only DTOs for client-facing lookups.
+**Current evidence:** The code uses `Optional` lookups and nullable internal `activeQuestId`; public runtime reads return detached copies.
+
+**Remaining / acceptance:** Define immutable client-facing DTOs and consistent not-found/finished-campaign semantics during networking/UI work.
 
 ### C-005 — Define failure/error reporting beyond `boolean`
 
-**Status:** `[ ]` **P2**.
+**Status:** `[~]` **P2**
 
-**Problem:** `boolean` is appropriate for the initial model but doesn't tell UI or logs *why* activation, advancement, or claiming failed.
+**Current evidence:** `CampaignAdvancementResult` and `RewardClaimResult` now distinguish failures (`MAIN_OBJECTIVES_INCOMPLETE`, `NOT_FOUND`, `ALREADY_CLAIMED`, `CLAIM_IN_PROGRESS`, etc.).
 
-**Required:** When integrating UI/networking, consider well-defined failure/result types or enums (`ALREADY_ACTIVE`, `OBJECTIVE_INCOMPLETE`, `INVENTORY_FULL`, `ALREADY_CLAIMED`, etc.) without introducing excessive abstraction prematurely.
+**Remaining / acceptance:** Replace remaining ambiguous booleans only when a real UI feedback requirement calls for it; consider a structured inventory-full response.
 
 ### C-006 — Decide API naming and package conventions before wider release
 
-**Status:** `[ ]` **P3**.
+**Status:** `[ ]` **P3**
 
-**Discussion:** Project currently uses Java package `com.TheAgeOfMachinery` and Gradle group `com.TheAgeOfMachinery`. Java naming conventions normally use all-lowercase package segments, but this casing was explicitly chosen and builds successfully.
+**Current evidence:** Java package `com.TheAgeOfMachinery` and mod ID `theageofmachinery` are deliberately retained and build successfully.
 
-**Required:** Decide whether to retain the existing public package or migrate to a lowercase identifier before substantial published APIs/serialized references depend on it. **Do not silently rename the project or package**; this is a convention question, not a runtime bug.
-
+**Remaining / acceptance:** Decide whether lowercase-package migration is worth the breaking change before public APIs; never silently rename the package.
 
 ### C-007 — Package-private access is encapsulation, not a security boundary
 
-**Status:** `[ ]` **P1** · Affected: `PlayerRewardInventory.claimReward()`, future `RewardManager`.
+**Status:** `[~]` **P1**
 
-**Discussion:** The method was deliberately declared without `public`, giving Java package-private access. This prevents unrelated packages from calling it directly, but another class in the same package can still call it, and it does not authenticate a player or validate network traffic.
+**Current evidence:** `PlayerRewardInventory.claimReward()` was made public for storage-layer controlled claiming; this is Java visibility, not permission validation. Runtime claims bind to `ServerPlayer`, check server/session, and operate through a guarded claim path.
 
-**Required:** Centralize calling paths through a server-owned manager; authenticate the requesting `ServerPlayer`, validate entitlement ownership and claim eligibility, and never expose mutation APIs in client payloads. Treat package visibility as API organization only.
+**Remaining / acceptance:** Keep direct domain-object mutation away from UI/network code; consider stricter module/package boundaries. Test packet-origin authentication when client requests exist.
 
 ### C-008 — Sealed reward hierarchy extensibility decision
 
-**Status:** `[ ]` **P2** · Affected: `RewardDefinition`.
+**Status:** `[ ]` **P2**
 
-**Discussion:** Current `sealed interface RewardDefinition permits ExperienceReward, ItemReward` is appropriate for known built-in reward types, and both permitted records are implicitly final. If the mod later supports externally registered reward types from third-party addons, the sealed hierarchy will require redesign or an intentional extension point.
+**Current evidence:** `RewardDefinition` is sealed to `ExperienceReward` and `ItemReward`, fitting the current Create-focused design.
 
-**Required:** Retain the sealed hierarchy while rewards are Create-focused and closed; revisit only if a real extensibility requirement emerges. Avoid introducing generic nullable reward fields just to support hypothetical types.
+**Remaining / acceptance:** Revisit only if genuine addon-extensible reward providers are required; avoid speculative abstraction.
 
 ---
 
-## 7. P1/P2 — NeoForge/Create integration, lifecycle, and testing
+## 7. NeoForge, Create, runtime and tests
 
 ### I-001 — NeoForge 1.21.1 and Create+ version compatibility
 
-**Status:** `[ ]` **P1**.
+**Status:** `[~]` **P1**
 
-**Known setup:** Java 21; NeoForge **21.1.233** matched the user's Create+ instance after an earlier mismatch with **21.1.265**; successful Modrinth load/build was reported for the base mod. Keep development configuration aligned with the targeted profile. A `runClient` development instance does not automatically contain Create+ mods or saves.
+**Current evidence:** The build/runtime target is Minecraft 1.21.1, NeoForge 21.1.233, Java 21. The dev client and Create+ Modrinth profile are separate environments; core tests passed in the developer setup.
 
-**Required:** Declare/verify Create dependency and its compatible APIs when integration begins, and test in both a controlled dev environment and a backed-up Modrinth/Create+ instance. Don't treat base-mod loading as proof of Create event compatibility.
+**Remaining / acceptance:** Verify actual Create and Create+ versions/dependencies before enabling Create event hooks or publishing compatibility claims; test with the real modpack.
 
 ### I-002 — Detect real Create engineering achievements
 
-**Status:** `[ ]` **P1/P2**.
+**Status:** `[ ]` **P1**
 
-**Problem:** Crafting, machine processing, automation, and transportation are not all reliably represented by basic vanilla craft events.
+**Current evidence:** No functional Create machinery achievements are detected. Only manually updated prototype objectives exist.
 
-**Required:** Research suitable NeoForge/Create hooks; handle placed blocks, processing results, inventories, conveyors, deployed mechanisms, and genuinely operational constructions as objectives require. Design alternatives where vanilla/Forge-style events cannot prove a working machine. Avoid awarding progress for simply holding preexisting items unless the objective explicitly allows it. Avoid progress double-counting on repeated events.
+**Remaining / acceptance:** Choose evidence for real Create outcomes (processing, rotations, transport, contraptions, automated cycles) and avoid accepting mere block placement as functional automation.
 
 ### I-003 — Multiplayer/session isolation
 
-**Status:** `[ ]` **P1**.
+**Status:** `[~]` **P1**
 
-**Required:** Key saves by actual authenticated UUIDs, maintain independent progression and entitlements, and route only the appropriate player's view to their client. Consider world/server lifecycle and disconnected players, new logins, and resync. Test two players completing the same quest at different times.
+**Current evidence:** UUID-keyed states, per-server runtime lifecycle, automatic login initialization, same-server/online player checks, and `/tamruntime audit` were implemented. The user successfully completed available 2.11.6 tests but **could not run a two-player test**.
+
+**Remaining / acceptance:** **PENDING — NOT TESTED:** connect two accounts to the same server. Verify different objective counts, independent rewards, joining/rejoining, one player finishing while the other is active, and world isolation. Do not mark complete based on one-player checks.
 
 ### I-004 — Automated tests
 
-**Status:** `[ ]` **P1**.
+**Status:** `[~]` **P1**
 
-**Required test categories:**
+**Current evidence:** Numerous operator-command manual integration tests passed: persistence, claims, staged advancement, stale revisions, read/write isolation, failed delivery, reentrancy, login and runtime validation.
 
-- Definition rejects null/blank IDs/descriptions, duplicate objective IDs, empty/all-optional objective sets, invalid counts.
-- Progress caps correctly, including near `Integer.MAX_VALUE`; ignores nonpositive increments and completed quests.
-- Optional objectives never block advancement but can be completed after the main objectives and before advancement.
-- Exactly one active quest; completed quests cannot be repeated or reactivated.
-- Wrong quest/objective IDs and stale previous quest IDs are rejected; no skipping.
-- Two UUIDs have isolated progress and rewards.
-- Reward entitlements appear only after advancement; unearned optional entries never appear.
-- Claim full entry or none; cannot claim a fraction; `RewardDelivery` failure leaves entitlement unclaimed and grants zero items/XP; inventory full leaves it available.
-- Repeated `unlockRewards()` cannot generate duplicate entitlements; duplicate claim requests/restarts cannot duplicate XP or items; saved state restores correctly.
-- Multiple rewards of the same type (100 XP and 50 XP) claim independently; group ordering remains stable after claiming.
-- `RewardClaimResult` reports `NOT_FOUND`, `ALREADY_CLAIMED`, `DELIVERY_FAILED`, and `SUCCESS` correctly; test `RewardDelivery` callbacks that throw/fail/partially mutate and define the failure contract.
-- An empty reward list, duplicate reward IDs, and invalid reward definitions produce specified behaviors.
-- Client synchronization does not expose future quest definitions or unrevealed reward metadata.
-
-**Tooling:** Start with Java unit tests of domain logic, then add game/integration tests where Minecraft/NeoForge behavior is involved. **All current Gradle builds are reported successful**, but the user has not reported running automated behavior tests or verifying multiplayer, saves, rewards or Minecraft integrations.
+**Remaining / acceptance:** Build a JUnit/GameTest or other repeatable automated suite for these invariants, including malformed NBT, off-thread access and adversarial packet handling. No automated suite has been verified.
 
 ### I-005 — Logging, diagnostics, and schema upgrades
 
-**Status:** `[ ]` **P2**.
+**Status:** `[~]` **P2**
 
-**Required:** Add clear diagnostics for invalid definitions, missing quest IDs, failed advancement, rejected claims, persistence failures, and incompatible save/schema versions. Define a strategy for removed/renamed quest IDs without silently corrupting player history.
+**Current evidence:** Debug commands provide substantial diagnostics; `CampaignSavedData` uses format v3 with codec validation and load compatibility branches for v1/v2/v3.
+
+**Remaining / acceptance:** Create structured logging, save migrations/backups, failure reporting, and automated compatibility tests; ensure debug logs do not reveal hidden content to clients.
 
 ### I-006 — Documentation for a public GitHub portfolio
 
-**Status:** `[ ]` **P2**.
+**Status:** `[~]` **P1**
 
-**Required:** Maintain a clear README, setup/build instructions for Java 21 / Minecraft 1.21.1 / NeoForge, optional test profile notes, architecture diagram, quest/reward JSON format, development roadmap, and human-readable changelog. Clearly distinguish working features from proposed features in public documentation.
+**Current evidence:** A README and living corrections guide exist; updated to the 2.11.6 checkpoint. Local builds, command-driven tests, and architecture are documented.
+
+**Remaining / acceptance:** Maintain docs after material design changes; add reproducible real-gameplay demos/screenshots, install/version instructions, verified multiplayer status, and explicit release gates.
+
+### I-007 — Automatic crafting event tracking
+
+**Status:** `[ ]` **P1**
+
+**Current evidence:** No gameplay crafting listener has been implemented; `craft_crafting_table` progress is currently changed with an operator command.
+
+**Remaining / acceptance:** In 2.12.1 detect server-side crafting output and quantity correctly, including shift-click/multi-result crafting if applicable, match only active objectives, and prove progression changes without debug commands.
+
+### I-008 — Item acquisition semantics and anti-double-counting
+
+**Status:** `[ ]` **P1**
+
+**Current evidence:** Gathering Cobblestone/Logs currently requires simulated progress; Minecraft acquisition has several entry paths (pickup, crafting, inventory transfer, rewards).
+
+**Remaining / acceptance:** In 2.12.2 choose an explicit event-vs-inventory-holdings rule, reconcile initial counts and reconnects, avoid counting the same items twice, and prevent items from the reward system inadvertently satisfying unintended acquisition objectives.
+
+### I-009 — Objective event routing and registry targets
+
+**Status:** `[ ]` **P1**
+
+**Current evidence:** Future gameplay event listeners need a data-driven match against active objectives rather than `if (objectiveId.equals("craft_crafting_table"))`.
+
+**Remaining / acceptance:** In 2.12.3 add an objective type and target registry ID or event-key routing system, bind it to `CampaignRuntime`, and ensure event listeners cannot access future quest definitions or arbitrarily award progress.
+
+### I-010 — Playable vertical-slice verification
+
+**Status:** `[ ]` **P1**
+
+**Current evidence:** Existing two-quest campaign completes with operator-generated progress; no real actions advance objectives yet.
+
+**Remaining / acceptance:** In 2.12.4 gather resources, craft requested items, manually advance, and claim earned rewards end-to-end without a debug progress command. Recheck save/rejoin behavior.
 
 ---
 
-## 8. Prioritized implementation sequence
+## 8. Persistence integration and recovery
 
-1. **Current checkpoint:** All classes through **Milestone 2.4.3** have user-confirmed successful builds. Confirm exact local revisions to `QuestProgress.addProgress()`, `QuestDefinition` validation, and `canAdvance()`; verify commit status separately.
-2. **Next:** Implement server-owned `RewardManager` and focused unit tests for reward lookup, unlocking, claim-state transitions, duplicate IDs, and failure responses. Keep Minecraft-independent logic testable.
-3. **First Minecraft-facing work:** Integrate NeoForge `ServerPlayer` reward delivery and event/lifecycle plumbing with full-capacity inventory preflight and XP grants. Do **not** expose live claims until Q-005/Q-006/R-006 are addressed.
-4. **Before gameplay advancement:** Wire reward definitions/sources into quests and implement Q-001, Q-002, Q-003, Q-004 and Q-007: coordinated advancement, authoritative successor, secrecy, mutation boundaries and durable saves. Keep claim and advance requests server-owned.
-5. **Then:** JSON quest schema + explicit campaign order, objective types, event matching, restricted client payloads and a reward/journal UI.
-6. **Before public release:** Automated regression tests, multiplayer/restart/crash/replay tests, Create+ compatibility verification, logging, and public project documentation.
+### P-001 — Eliminate duplicate authoritative manager state
 
-> **Implementation dependency:** This sequence is a planning outline, not permission to wire the current `completeActiveQuest()` directly to a real player action. Rewards and persistence must be coordinated before real advancement is exposed.
+**Status:** `[x]` **P0**
+
+**Current evidence:** 2.8.1 and 2.8.2 removed independent player maps from managers. Both share authoritative `CampaignSavedData`; 2.11 introduced one runtime per Minecraft server and registered one quest manager through the advancement service.
+
+**Remaining / acceptance:** Maintain this ownership when adding objective event listeners and JSON reloading. Do not create parallel runtime managers.
+
+### P-002 — Make dirty marking inseparable from trusted mutations
+
+**Status:** `[x]` **P0**
+
+**Current evidence:** `CampaignSavedData` uses detached snapshots, copy-on-write, revision-checked storage, one advancement commit, and guarded claiming. Legacy unconditional `storePlayerQuestProgress` and `storePlayerRewardInventory` were removed in 2.10.6B. Normal mutation/restart regression tests passed.
+
+**Remaining / acceptance:** Keep all new mutation paths revision-safe, server-thread-bound, and `setDirty()`-aware. Separately track crash persistence under P-005.
+
+### P-003 — Validate and migrate loaded world data safely
+
+**Status:** `[~]` **P1**
+
+**Current evidence:** Schema v3 is unchanged across the runtime refactors, and previous save contents survived repeated world-restarter tests. Version branches for v1/v2/v3 and codec-level checks exist.
+
+**Remaining / acceptance:** Test migrations from actual v1/v2 saves, missing/wrong-typed NBT values, corrupted states, future version handling, changed JSON objective/reward definitions, backups, and recovery.
+
+### P-004 — Verify reward claims persist across world restarts
+
+**Status:** `[x]` **P0**
+
+**Current evidence:** Milestone 2.7.8 confirmed unlocked, claimed and remaining XP/item rewards survive world restarts, reject repeat claims and retain indivisible full-inventory retry behavior. Manager-backed tests repeated these results through 2.11.6.
+
+**Remaining / acceptance:** Maintain regression coverage, ideally automated; crash timing is a separate open item P-005.
+
+### P-005 — Handle crash timing and exactly-once delivery
+
+**Status:** `[ ]` **P0**
+
+**Current evidence:** Reward claim state is updated in controlled server execution, but Minecraft inventory/XP saving and campaign `SavedData` are not one durable transaction. An exception after delivery side effects can also leave an uncertain entitlement.
+
+**Remaining / acceptance:** Design supported recovery: possible `REVIEW_REQUIRED` / pending ledger, idempotent delivery/journaling, safe retry policy, and crash simulation. Do not claim exactly-once XP/item delivery until supported by tests.
+
+### P-006 — Remove or gate administrator debug endpoints for release
+
+**Status:** `[ ]` **P1**
+
+**Current evidence:** Many level-2 debug commands remain, including reward grant/unlock and arbitrary objective increments. The 2.11.6 audit intentionally exposes quest status to operators.
+
+**Remaining / acceptance:** Disable, remove, or gate test commands in production builds; keep test harnesses in dev-only configuration and avoid permission bypass. Check spoiler information is never sent to ordinary clients.
+
+### P-007 — Ensure client confidentiality matches distribution model
+
+**Status:** `[ ]` **P1**
+
+**Current evidence:** Current client networking/UI are not implemented. Built-in quest/reward definitions are server-managed at runtime, but a client-installed JAR can expose any embedded content through file inspection.
+
+**Remaining / acceptance:** Transmit only permitted quest state and earned rewards; establish the secrecy threat model for content bundled client-side and consider server-only content distribution if extraction resistance is required.
+
+### P-008 — Stable history ordering and restored identifiers
+
+**Status:** `[ ]` **P2**
+
+**Current evidence:** Quest progress restoration uses map-based histories and does not explicitly persist chronological completion order; rewards use `LinkedHashMap` for group insertion order.
+
+**Remaining / acceptance:** Choose chronological/campaign ordering for future history UI, save explicit ordering if needed, and verify stable IDs/order across JSON updates and restarts.
+
+### P-009 — Reduce privileged mutation and diagnostic API exposure
+
+**Status:** `[~]` **P1**
+
+**Current evidence:** The runtime is the intended gameplay facade, but `CampaignSavedData`, manager constructors, domain mutators and some debug commands are still public Java APIs. The API is not a sandbox against arbitrary server-side code.
+
+**Remaining / acceptance:** Avoid exposing raw mutation paths to network handlers, consolidate production service ownership, distinguish dev-only calls, and consider package visibility/restricted interfaces when a concrete misuse is identified.
 
 ---
 
-## 9. Open design decisions (not yet finalized)
+## 9. Updated delivery sequence
 
-These are **questions to resolve during implementation**, not prior commitments:
+1. **2.12 — Real Minecraft gameplay events (next):** 2.12.1 crafting detection, 2.12.2 item acquisition/anti-double-counting, 2.12.3 definition-driven objective routing, 2.12.4 a playable two-quest prototype without manual debug increments. Keep event updates server-owned and limited to the active quest. **The choice to advance remains manual.**
+2. **2.13 — Data-driven content:** validated JSON campaign definitions, immutable IDs, registry-aware objective targeting, authored ingredient/hint metadata; migration/backups when changing saved objective IDs.
+3. **2.14 — Create integration:** verify Create/NeoForge compatibility in the actual Create+ environment, detect meaningful engineering achievements and functional processing/automation.
+4. **2.15 — Network and Quest/Rewards UI:** spoiler-safe payloads, Quest Journal, ingredients and three hint levels, manual advancement button, grouped Claim actions, inventory-full feedback.
+5. **Release safety gates:** automated tests (I-004), **two-player dedicated/LAN tests (I-003)**, negative packet/security tests (Q-005), crash-delivery recovery policy (P-005), debug-command gating (P-006), version/migration tests (P-003), packaging and documentation.
 
-- **Advancement durability:** exact strategy for handling partial writes and crash recovery across player quest state, reward entitlements, and Minecraft inventory/XP.
-- **Reward claim delivery:** how to preflight inventory insertion and protect against races or unexpected slot changes; where XP grant and claimed-state persistence are ordered; how to recover from process termination between delivery and save.
-- **Reward `deliver()` failure contract:** whether to keep `boolean` or use a structured result (inventory full, unknown item, other failure), and how to guarantee no side effects when the callback reports failure.
-- **Reward source metadata:** final schema for identifying main vs optional objective rewards, and whether zero-reward quests create an empty reward group.
-- **Quest definition updates:** how to migrate old saved objective IDs/progress after JSON data pack updates, and whether definitions can reload live.
-- **Create objective verification:** how to prove a machine is functional rather than merely built/placed, without forbidding creative alternate solutions.
-- **Rewards/UI presentation:** whether newly unlocked rewards should produce a notification in addition to appearing in the grouped Rewards UI.
-- **Progress data exposure:** exact read-only API/DTO shape versus package-private domain methods; choose the simplest safe design.
-- **Failure feedback:** whether to use result enums or richer error objects once the UI needs actionable messages.
+**Vertical-slice target:** Gather 16 Cobblestone and optionally 8 Oak Logs → manually advance → craft a Crafting Table and optionally a Furnace → manually advance → claim XP/items. The present prototype definitions use those objectives; **automatic event detection is the missing link**.
 
----
+## 10. Unresolved design decisions
 
-## 10. Revision log
+- **Item acquisition semantics:** count pickups, increases in held inventory, distinct source events, or an explicit combination; how to avoid duplicates after crafting, dropping, reclaiming and reconnecting.
+- **Crafting semantics:** result-stack quantities, shift-click batch crafting, server-only detection, and recipe vs output-item identity.
+- **Objective data model:** type-specific targets and multi-step Create achievements; registry validation and future schema upgrades.
+- **Crash recovery:** policy for uncertain delivery after side effects or process termination; no unverified promise of exactly-once grants.
+- **Reward presentation metadata:** main vs optional origin, stable entitlement identity, zero-reward group semantics and historical definitions.
+- **Content distribution/secrecy:** preventing UI/network spoilers is feasible; preventing JAR asset extraction may require server-exclusive data.
+- **Data migrations:** updating definitions without invalidating saved active/completed quests or existing reward quantities.
+- **Multiplayer evidence:** maintain as **pending** until two accounts can test independent progress and reconnect behavior.
+- **Release access policy:** development commands must not ship unguarded, even if currently level-2 operator-only.
+
+## 11. Revision log
 
 | Date | Change |
 |---|---|
-| 2026-10-25 | Initial consolidation of decisions, deferred corrections, limitations, and planned features from the quest-mod discussion. |
-| 2026-10-26 | User confirmed all builds through 2.4.3 successful. Recorded sealed XP/item rewards, per-player reward inventory, package-private claim workflow and delivery contract; added R-006–R-008 and C-007–C-008, updated R-001, Q-006, test coverage and implementation roadmap. |
+| 2026-10-25 | Initial consolidation of quest/reward decisions and correction backlog. |
+| 2026-10-26 | Expanded reward and API issues through early reward implementation. |
+| 2026-10-26 | Consolidated through 2.7.7, adding persistence issues P-001–P-008. |
+| **2026-10-26** | **Updated through 2.11.6:** retained all 43 historical IDs, refreshed implementation/verification states after 2.7.8–2.11.6, recorded auto-login, unified runtime, staged/revision-checked persistence and failure tests; explicitly marked **two-player testing pending**; added event-routing tasks I-007–I-010 and API-boundary follow-up P-009; prioritized the 2.12 gameplay vertical slice. |
 
-**Maintenance rule:** Whenever we say "we'll fix that later", add or update an item here **in the same development milestone**. Never close an item solely because the build succeeds; verify its acceptance criteria.
+**Maintenance rule:** If work introduces an important deferred correction, add it to this guide with an acceptance test. Do not close an issue solely because compilation succeeds, and never mark a two-player or crash test as passed without running it.
