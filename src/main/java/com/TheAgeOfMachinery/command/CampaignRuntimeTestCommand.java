@@ -7,6 +7,7 @@ import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 
+import java.util.List;
 import java.util.Objects;
 
 import javax.annotation.Nonnull;
@@ -17,14 +18,17 @@ public final class CampaignRuntimeTestCommand
     {
     }
 
+    
     public static void register(RegisterCommandsEvent event)
     {
         event.getDispatcher().register(
             Commands.literal("tamruntime")
                 .requires(source -> source.hasPermission(2))
                 .then(Commands.literal("status").executes(context -> status(context.getSource())))
+                .then(Commands.literal("campaign").executes(context -> campaign(context.getSource())))
         );
     }
+
 
     private static int status(CommandSourceStack source)
     {
@@ -43,4 +47,21 @@ public final class CampaignRuntimeTestCommand
 
         source.sendSuccess(() -> message, false);
     }
+
+    
+    private static int campaign(CommandSourceStack source)
+    {
+        CampaignRuntime runtime = CampaignRuntime.get(source.getServer());
+        List<String> questIds = runtime.getCampaignQuestIds();
+
+        success(source, "Registered campaign quests: " + runtime.getCampaignQuestCount());
+
+        for (int index = 0; index < questIds.size(); index++)
+        {
+            success(source, "Quest " + (index + 1) + ": " + questIds.get(index));
+        }
+
+        return 1;
+    }
+
 }

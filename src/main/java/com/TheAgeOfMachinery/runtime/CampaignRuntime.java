@@ -3,12 +3,15 @@ package com.TheAgeOfMachinery.runtime;
 import com.TheAgeOfMachinery.persistence.CampaignSavedData;
 import com.TheAgeOfMachinery.quest.CampaignAdvancementService;
 import com.TheAgeOfMachinery.reward.RewardManager;
+import com.TheAgeOfMachinery.quest.CampaignDefinition;
+import com.TheAgeOfMachinery.reward.QuestRewardDefinition;
 
 import net.minecraft.server.MinecraftServer;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 
 import java.util.IdentityHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
@@ -20,13 +23,22 @@ public final class CampaignRuntime
     private final UUID sessionId = UUID.randomUUID();
     private final CampaignAdvancementService advancementService;
     private final RewardManager rewardManager;
+    private final CampaignDefinition campaign;
 
+    
     private CampaignRuntime(MinecraftServer server)
     {
         CampaignSavedData savedData = CampaignSavedData.get(server);
 
         advancementService = new CampaignAdvancementService(savedData);
         rewardManager = new RewardManager(savedData);
+
+        campaign = BuiltInCampaign.create();
+
+        for (QuestRewardDefinition definition : campaign.quests())
+        {
+            advancementService.registerQuest(definition);
+        }
     }
 
     public static void onServerStarted(ServerStartedEvent event)
@@ -68,5 +80,16 @@ public final class CampaignRuntime
     {
         return rewardManager;
     }
+
+    public int getCampaignQuestCount()
+    {
+        return campaign.questCount();
+    }
+
+    public List<String> getCampaignQuestIds()
+    {
+        return campaign.getQuestIds();
+    }
+
 }
 
