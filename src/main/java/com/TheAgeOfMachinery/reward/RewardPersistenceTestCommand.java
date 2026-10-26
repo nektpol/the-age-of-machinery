@@ -2,7 +2,6 @@ package com.TheAgeOfMachinery.reward;
 
 import com.TheAgeOfMachinery.integration.MinecraftRewardDelivery;
 import com.TheAgeOfMachinery.persistence.CampaignSavedData;
-import com.TheAgeOfMachinery.reward.RewardManager;
 
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 
