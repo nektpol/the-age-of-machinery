@@ -30,6 +30,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
+import javax.annotation.Nonnull;
+
 public final class ManagerIntegrationTestCommand
 {
     private static final String FIRST_QUEST_ID = "theageofmachinery:debug_manager_first";
@@ -230,7 +232,7 @@ public final class ManagerIntegrationTestCommand
         return 1;
     }
 
-    private static int success(CommandSourceStack source, String text)
+    private static int success(CommandSourceStack source, @Nonnull String text)
     {
         Component message = Objects.requireNonNull(Component.literal(text), "Success message cannot be null.");
 
@@ -238,7 +240,7 @@ public final class ManagerIntegrationTestCommand
         return 1;
     }
 
-    private static int failure(CommandSourceStack source, String text)
+    private static int failure(CommandSourceStack source, @Nonnull String text)
     {
         Component message = Objects.requireNonNull(Component.literal(text), "Failure message cannot be null.");
 
