@@ -49,13 +49,14 @@ public class CampaignAdvancementService
     {
         Objects.requireNonNull(playerId, "Player ID cannot be null.");
 
-        Optional<PlayerQuestProgress> playerResult = savedData.getPlayerQuestProgress(playerId);
+        Optional<CampaignSavedData.PlayerSnapshot> snapshotResult = savedData.getPlayerSnapshot(playerId);
 
-        if (playerResult.isEmpty()) return CampaignAdvancementResult.NO_ACTIVE_QUEST;
+        if (snapshotResult.isEmpty()) return CampaignAdvancementResult.NO_ACTIVE_QUEST;
 
-        PlayerQuestProgress originalQuests = playerResult.get();
+        CampaignSavedData.PlayerSnapshot snapshot = snapshotResult.get();
+        PlayerQuestProgress originalQuests = snapshot.quests();
 
-        if (!originalQuests.hasActiveQuest()) return CampaignAdvancementResult.NO_ACTIVE_QUEST;
+        if (originalQuests == null || !originalQuests.hasActiveQuest()) return CampaignAdvancementResult.NO_ACTIVE_QUEST;
 
         Optional<QuestProgress> activeProgressResult = originalQuests.getActiveQuestProgress();
 
@@ -72,10 +73,9 @@ public class CampaignAdvancementService
         QuestRewardDefinition rewardConfiguration = questRewards.get(questId);
 
         if (rewardConfiguration == null) return CampaignAdvancementResult.INVALID_CAMPAIGN_STATE;
-
         if (!originalQuests.canAdvanceActiveQuest(activeQuest)) return CampaignAdvancementResult.MAIN_OBJECTIVES_INCOMPLETE;
 
-        PlayerRewardInventory originalRewards = savedData.getPlayerRewardInventory(playerId).orElse(null);
+        PlayerRewardInventory originalRewards = snapshot.rewards();
 
         if (originalRewards != null && originalRewards.hasUnlockedRewardsFromQuest(questId))
         {
@@ -89,17 +89,11 @@ public class CampaignAdvancementService
             return CampaignAdvancementResult.INVALID_CAMPAIGN_STATE;
         }
 
-        // Phase 1: Calculate the rewards without modifying persistent player data.
         List<RewardDefinition> earnedRewards = rewardConfiguration.calculateEarnedRewards(activeProgress);
 
-        // Phase 2: Create independent copies of the player's current state.
         PlayerQuestProgress stagedQuests = PlayerQuestProgressCodec.read(PlayerQuestProgressCodec.write(originalQuests));
+        PlayerRewardInventory stagedRewards = originalRewards == null ? new PlayerRewardInventory(playerId) : PlayerRewardInventoryCodec.read(PlayerRewardInventoryCodec.write(originalRewards));
 
-        PlayerRewardInventory stagedRewards = originalRewards == null
-            ? new PlayerRewardInventory(playerId)
-            : PlayerRewardInventoryCodec.read(PlayerRewardInventoryCodec.write(originalRewards));
-
-        // Phase 3: Apply every advancement operation to the staged objects.
         if (!stagedRewards.unlockRewards(questId, earnedRewards))
         {
             return CampaignAdvancementResult.REWARDS_ALREADY_UNLOCKED;
@@ -115,8 +109,7 @@ public class CampaignAdvancementService
             return CampaignAdvancementResult.INVALID_CAMPAIGN_STATE;
         }
 
-        // Phase 4: Replace the original quest and reward state together.
-        if (!savedData.commitAdvancement(playerId, originalQuests, originalRewards, stagedQuests, stagedRewards))
+        if (!savedData.commitAdvancement(playerId, snapshot.revision(), stagedQuests, stagedRewards))
         {
             return CampaignAdvancementResult.INVALID_CAMPAIGN_STATE;
         }

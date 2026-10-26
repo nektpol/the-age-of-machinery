@@ -14,6 +14,7 @@ import com.TheAgeOfMachinery.command.QuestPersistenceTestCommand;
 import com.TheAgeOfMachinery.reward.RewardPersistenceTestCommand;
 import com.TheAgeOfMachinery.command.ManagerIntegrationTestCommand;
 import com.TheAgeOfMachinery.command.CampaignAdvancementTestCommand;
+import com.TheAgeOfMachinery.command.StateIsolationTestCommand;
 import net.neoforged.neoforge.common.NeoForge;
 
 @Mod(TheAgeofMachinery.MODID)
@@ -34,6 +35,7 @@ public class TheAgeofMachinery
         NeoForge.EVENT_BUS.addListener(RewardPersistenceTestCommand::register);
         NeoForge.EVENT_BUS.addListener(ManagerIntegrationTestCommand::register);
         NeoForge.EVENT_BUS.addListener(CampaignAdvancementTestCommand::register);
+        NeoForge.EVENT_BUS.addListener(StateIsolationTestCommand::register);
     }
 }
 

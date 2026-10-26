@@ -29,7 +29,11 @@ public class CampaignSavedData extends SavedData
 
     private static final int FORMAT_VERSION = 3;
 
-    private record PlayerState(PlayerQuestProgress quests, PlayerRewardInventory rewards)
+    private record PlayerState(PlayerQuestProgress quests, PlayerRewardInventory rewards, long revision)
+    {
+    }
+
+    public record PlayerSnapshot(long revision, PlayerQuestProgress quests, PlayerRewardInventory rewards)
     {
     }
 
@@ -65,17 +69,16 @@ public class CampaignSavedData extends SavedData
 
             for (int index = 0; index < playersTag.size(); index++)
             {
-                CompoundTag playerTag = playersTag.getCompound(index);
-                PlayerQuestProgress progress = PlayerQuestProgressCodec.read(playerTag);
-
+                PlayerQuestProgress progress = PlayerQuestProgressCodec.read(playersTag.getCompound(index));
                 UUID playerId = progress.getPlayerId();
+
                 PlayerState existing = data.players.get(playerId);
 
                 if (existing != null && existing.quests() != null) throw new IllegalArgumentException("Duplicate saved player UUID: " + playerId);
 
                 PlayerRewardInventory rewards = existing == null ? null : existing.rewards();
 
-                data.players.put(playerId, new PlayerState(progress, rewards));
+                data.players.put(playerId, new PlayerState(progress, rewards, 0));
             }
         }
 
@@ -87,17 +90,16 @@ public class CampaignSavedData extends SavedData
 
             for (int index = 0; index < inventoriesTag.size(); index++)
             {
-                CompoundTag inventoryTag = inventoriesTag.getCompound(index);
-                PlayerRewardInventory inventory = PlayerRewardInventoryCodec.read(inventoryTag);
-
+                PlayerRewardInventory inventory = PlayerRewardInventoryCodec.read(inventoriesTag.getCompound(index));
                 UUID playerId = inventory.getPlayerId();
+
                 PlayerState existing = data.players.get(playerId);
 
                 if (existing != null && existing.rewards() != null) throw new IllegalArgumentException("Duplicate saved reward inventory UUID: " + playerId);
 
                 PlayerQuestProgress quests = existing == null ? null : existing.quests();
 
-                data.players.put(playerId, new PlayerState(quests, inventory));
+                data.players.put(playerId, new PlayerState(quests, inventory, 0));
             }
         }
 
@@ -117,14 +119,12 @@ public class CampaignSavedData extends SavedData
         {
             if (state.quests() != null)
             {
-                CompoundTag playerTag = PlayerQuestProgressCodec.write(state.quests());
-                playersTag.add(playerTag);
+                playersTag.add(PlayerQuestProgressCodec.write(state.quests()));
             }
 
             if (state.rewards() != null)
             {
-                CompoundTag inventoryTag = PlayerRewardInventoryCodec.write(state.rewards());
-                inventoriesTag.add(inventoryTag);
+                inventoriesTag.add(PlayerRewardInventoryCodec.write(state.rewards()));
             }
         }
 
@@ -132,6 +132,31 @@ public class CampaignSavedData extends SavedData
         tag.put(TAG_REWARD_INVENTORIES, inventoriesTag);
 
         return tag;
+    }
+
+    private static PlayerQuestProgress copyQuests(PlayerQuestProgress progress)
+    {
+        if (progress == null) return null;
+
+        return PlayerQuestProgressCodec.read(PlayerQuestProgressCodec.write(progress));
+    }
+
+    private static PlayerRewardInventory copyRewards(PlayerRewardInventory inventory)
+    {
+        if (inventory == null) return null;
+
+        return PlayerRewardInventoryCodec.read(PlayerRewardInventoryCodec.write(inventory));
+    }
+
+    public Optional<PlayerSnapshot> getPlayerSnapshot(UUID playerId)
+    {
+        Objects.requireNonNull(playerId, "Player ID cannot be null.");
+
+        PlayerState state = players.get(playerId);
+
+        if (state == null) return Optional.empty();
+
+        return Optional.of(new PlayerSnapshot(state.revision(), copyQuests(state.quests()), copyRewards(state.rewards())));
     }
 
     public Optional<PlayerQuestProgress> getPlayerQuestProgress(UUID playerId)
@@ -142,7 +167,7 @@ public class CampaignSavedData extends SavedData
 
         if (state == null) return Optional.empty();
 
-        return Optional.ofNullable(state.quests());
+        return Optional.ofNullable(copyQuests(state.quests()));
     }
 
     public void storePlayerQuestProgress(PlayerQuestProgress progress)
@@ -153,8 +178,9 @@ public class CampaignSavedData extends SavedData
         PlayerState existing = players.get(playerId);
 
         PlayerRewardInventory rewards = existing == null ? null : existing.rewards();
+        long revision = existing == null ? 1 : existing.revision() + 1;
 
-        players.put(playerId, new PlayerState(progress, rewards));
+        players.put(playerId, new PlayerState(copyQuests(progress), rewards, revision));
         setDirty();
     }
 
@@ -166,7 +192,7 @@ public class CampaignSavedData extends SavedData
 
         if (state == null) return Optional.empty();
 
-        return Optional.ofNullable(state.rewards());
+        return Optional.ofNullable(copyRewards(state.rewards()));
     }
 
     public void storePlayerRewardInventory(PlayerRewardInventory inventory)
@@ -177,15 +203,15 @@ public class CampaignSavedData extends SavedData
         PlayerState existing = players.get(playerId);
 
         PlayerQuestProgress quests = existing == null ? null : existing.quests();
+        long revision = existing == null ? 1 : existing.revision() + 1;
 
-        players.put(playerId, new PlayerState(quests, inventory));
+        players.put(playerId, new PlayerState(quests, copyRewards(inventory), revision));
         setDirty();
     }
 
-    public boolean commitAdvancement(UUID playerId, PlayerQuestProgress expectedQuests, PlayerRewardInventory expectedRewards, PlayerQuestProgress updatedQuests, PlayerRewardInventory updatedRewards)
+    public boolean commitAdvancement(UUID playerId, long expectedRevision, PlayerQuestProgress updatedQuests, PlayerRewardInventory updatedRewards)
     {
         Objects.requireNonNull(playerId, "Player ID cannot be null.");
-        Objects.requireNonNull(expectedQuests, "Expected quest progress cannot be null.");
         Objects.requireNonNull(updatedQuests, "Updated quest progress cannot be null.");
         Objects.requireNonNull(updatedRewards, "Updated reward inventory cannot be null.");
 
@@ -195,10 +221,13 @@ public class CampaignSavedData extends SavedData
         PlayerState current = players.get(playerId);
 
         if (current == null) return false;
-        if (current.quests() != expectedQuests) return false;
-        if (current.rewards() != expectedRewards) return false;
+        if (current.revision() != expectedRevision) return false;
+        if (current.quests() == null) return false;
 
-        players.put(playerId, new PlayerState(updatedQuests, updatedRewards));
+        PlayerQuestProgress committedQuests = copyQuests(updatedQuests);
+        PlayerRewardInventory committedRewards = copyRewards(updatedRewards);
+
+        players.put(playerId, new PlayerState(committedQuests, committedRewards, current.revision() + 1));
         setDirty();
 
         return true;
