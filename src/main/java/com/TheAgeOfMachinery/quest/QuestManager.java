@@ -126,25 +126,6 @@ public class QuestManager
         return progress.canAdvanceActiveQuest(definition);
     }
 
-    public boolean completeActiveQuest(UUID playerId)
-    {
-        Optional<CampaignSavedData.PlayerSnapshot> snapshotResult = savedData.getPlayerSnapshot(playerId);
-
-        if (snapshotResult.isEmpty()) return false;
-
-        CampaignSavedData.PlayerSnapshot snapshot = snapshotResult.get();
-        PlayerQuestProgress progress = snapshot.quests();
-
-        if (progress == null || !progress.hasActiveQuest()) return false;
-
-        QuestDefinition definition = questDefinitions.get(progress.getActiveQuestId());
-
-        if (definition == null) return false;
-        if (!progress.completeActiveQuest(definition)) return false;
-
-        return savedData.tryStorePlayerQuestProgress(playerId, snapshot.revision(), progress);
-    }
-
     public Optional<QuestDefinition> getNextQuestDefinition(String completedQuestId)
     {
         int currentIndex = questOrder.indexOf(completedQuestId);
@@ -156,27 +137,6 @@ public class QuestManager
         if (nextIndex >= questOrder.size()) return Optional.empty();
 
         return getQuestDefinition(questOrder.get(nextIndex));
-    }
-
-    public boolean activateNextQuest(UUID playerId, String completedQuestId)
-    {
-        Optional<CampaignSavedData.PlayerSnapshot> snapshotResult = savedData.getPlayerSnapshot(playerId);
-
-        if (snapshotResult.isEmpty()) return false;
-
-        CampaignSavedData.PlayerSnapshot snapshot = snapshotResult.get();
-        PlayerQuestProgress progress = snapshot.quests();
-
-        if (progress == null) return false;
-        if (!progress.hasCompletedQuest(completedQuestId)) return false;
-        if (progress.hasActiveQuest()) return false;
-
-        Optional<QuestDefinition> nextQuest = getNextQuestDefinition(completedQuestId);
-
-        if (nextQuest.isEmpty()) return false;
-        if (!progress.activateQuest(nextQuest.get())) return false;
-
-        return savedData.tryStorePlayerQuestProgress(playerId, snapshot.revision(), progress);
     }
 
     public List<String> getQuestOrderSnapshot()

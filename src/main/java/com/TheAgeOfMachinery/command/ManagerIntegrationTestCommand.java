@@ -10,9 +10,11 @@ import com.TheAgeOfMachinery.quest.QuestProgress;
 import com.TheAgeOfMachinery.reward.ExperienceReward;
 import com.TheAgeOfMachinery.reward.ItemReward;
 import com.TheAgeOfMachinery.reward.RewardClaimResult;
-import com.TheAgeOfMachinery.reward.RewardDefinition;
 import com.TheAgeOfMachinery.reward.RewardEntry;
 import com.TheAgeOfMachinery.reward.RewardManager;
+import com.TheAgeOfMachinery.quest.CampaignAdvancementResult;
+import com.TheAgeOfMachinery.quest.CampaignAdvancementService;
+import com.TheAgeOfMachinery.reward.QuestRewardDefinition;
 
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 
@@ -23,12 +25,13 @@ import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.HashSet;
+import java.util.Set;
 
 import javax.annotation.Nonnull;
 
@@ -47,6 +50,25 @@ public final class ManagerIntegrationTestCommand
     private static final QuestDefinition FIRST_QUEST = new QuestDefinition(FIRST_QUEST_ID, "Manager Test One", "Verify persistent manager coordination.", List.of(MAIN_OBJECTIVE, OPTIONAL_OBJECTIVE));
     private static final QuestDefinition SECOND_QUEST = new QuestDefinition(SECOND_QUEST_ID, "Manager Test Two", "Verify activation of the next quest.", List.of(new QuestObjective(SECOND_OBJECTIVE_ID, "Perform one test action", 1, false)));
 
+    
+    private static final QuestRewardDefinition FIRST_REWARDS = new QuestRewardDefinition(
+        FIRST_QUEST,
+        List.of(
+            new ExperienceReward("main_xp", 100),
+            new ItemReward("main_iron", "minecraft:iron_ingot", 5)
+        ),
+        Map.of(
+            OPTIONAL_OBJECTIVE_ID, List.of(new ExperienceReward("bonus_xp", 50))
+        )
+    );
+
+    private static final QuestRewardDefinition SECOND_REWARDS = new QuestRewardDefinition(
+        SECOND_QUEST,
+        List.of(),
+        Map.of()
+    );
+
+
     private ManagerIntegrationTestCommand()
     {
     }
@@ -63,9 +85,9 @@ public final class ManagerIntegrationTestCommand
                     .then(Commands.literal("optional").executes(context -> addProgress(context.getSource(), OPTIONAL_OBJECTIVE_ID)))
                     .then(Commands.literal("second").executes(context -> addProgress(context.getSource(), SECOND_OBJECTIVE_ID)))
                 )
-                .then(Commands.literal("complete").executes(context -> complete(context.getSource())))
-                .then(Commands.literal("unlock").executes(context -> unlock(context.getSource())))
-                .then(Commands.literal("next").executes(context -> activateNext(context.getSource())))
+                .then(Commands.literal("advance").executes(context -> advance(context.getSource())))
+                .then(Commands.literal("verify-rewards").executes(context -> verifyRewards(context.getSource())))
+                .then(Commands.literal("verify-next").executes(context -> verifyNext(context.getSource())))
                 .then(Commands.literal("claim")
                     .then(Commands.literal("xp").executes(context -> claim(context.getSource(), "main_xp")))
                     .then(Commands.literal("iron").executes(context -> claim(context.getSource(), "main_iron")))
@@ -77,7 +99,7 @@ public final class ManagerIntegrationTestCommand
     private static UUID getTestPlayerId(CommandSourceStack source) throws CommandSyntaxException
     {
         UUID playerId = Objects.requireNonNull(source.getPlayerOrException().getUUID(), "Player UUID cannot be null.");
-        String testKey = "theageofmachinery:manager_integration_test:" + playerId;
+        String testKey = "theageofmachinery:manager_integration_v2:" + playerId;
 
         return UUID.nameUUIDFromBytes(testKey.getBytes(StandardCharsets.UTF_8));
     }
@@ -89,6 +111,15 @@ public final class ManagerIntegrationTestCommand
         manager.registerQuest(SECOND_QUEST);
 
         return manager;
+    }
+
+    private static CampaignAdvancementService createAdvancementService(CampaignSavedData data)
+    {
+        CampaignAdvancementService service = new CampaignAdvancementService(data);
+        service.registerQuest(FIRST_REWARDS);
+        service.registerQuest(SECOND_REWARDS);
+
+        return service;
     }
 
     private static int initialize(CommandSourceStack source) throws CommandSyntaxException
@@ -111,60 +142,74 @@ public final class ManagerIntegrationTestCommand
         return success(source, "Objective updated: " + objectiveId);
     }
 
-    private static int complete(CommandSourceStack source) throws CommandSyntaxException
+    private static int advance(CommandSourceStack source) throws CommandSyntaxException
     {
         CampaignSavedData data = CampaignSavedData.get(source.getServer());
-        QuestManager questManager = createQuestManager(data);
+        CampaignAdvancementService service = createAdvancementService(data);
 
-        if (!questManager.completeActiveQuest(getTestPlayerId(source))) return failure(source, "Active quest is not ready for completion.");
+        CampaignAdvancementResult result = service.advanceQuest(getTestPlayerId(source));
 
-        return success(source, "Active quest completed.");
+        if (result == CampaignAdvancementResult.NEXT_QUEST_STARTED) return success(source, "Quest advanced and next quest activated.");
+        if (result == CampaignAdvancementResult.CAMPAIGN_COMPLETED) return success(source, "Campaign completed.");
+
+        return failure(source, "Advancement rejected: " + result);
     }
 
-    private static int unlock(CommandSourceStack source) throws CommandSyntaxException
+    
+    private static int verifyRewards(CommandSourceStack source) throws CommandSyntaxException
     {
         CampaignSavedData data = CampaignSavedData.get(source.getServer());
         UUID playerId = getTestPlayerId(source);
 
         Optional<PlayerQuestProgress> playerResult = data.getPlayerQuestProgress(playerId);
 
-        if (playerResult.isEmpty()) return failure(source, "Test player progress not found.");
+        if (playerResult.isEmpty()) return failure(source, "Player progression not found.");
 
         PlayerQuestProgress playerProgress = playerResult.get();
 
-        if (!playerProgress.hasCompletedQuest(FIRST_QUEST_ID)) return failure(source, "Complete the first test quest before unlocking rewards.");
+        if (!playerProgress.hasCompletedQuest(FIRST_QUEST_ID)) return failure(source, "First quest is not completed.");
 
         Optional<QuestProgress> questResult = playerProgress.getQuestProgress(FIRST_QUEST_ID);
 
-        if (questResult.isEmpty()) return failure(source, "First test quest progress not found.");
+        if (questResult.isEmpty()) return failure(source, "First quest progress is missing.");
 
-        QuestProgress questProgress = questResult.get();
-
-        List<RewardDefinition> rewards = new ArrayList<>();
-        rewards.add(new ExperienceReward("main_xp", 100));
-        rewards.add(new ItemReward("main_iron", "minecraft:iron_ingot", 5));
-
-        if (questProgress.isObjectiveComplete(OPTIONAL_OBJECTIVE))
-        {
-            rewards.add(new ExperienceReward("bonus_xp", 50));
-        }
+        boolean optionalCompleted = questResult.get().isObjectiveComplete(OPTIONAL_OBJECTIVE);
 
         RewardManager rewardManager = new RewardManager(data);
+        List<RewardEntry> entries = rewardManager.getPlayerRewardsSnapshot(playerId).get(FIRST_QUEST_ID);
 
-        if (!rewardManager.unlockQuestRewards(playerId, FIRST_QUEST_ID, rewards)) return failure(source, "Rewards have already been unlocked.");
+        if (entries == null) return failure(source, "Rewards have not been unlocked.");
 
-        return success(source, "Earned rewards unlocked through RewardManager.");
+        Set<String> rewardIds = new HashSet<>();
+
+        for (RewardEntry entry : entries)
+        {
+            rewardIds.add(entry.rewardId());
+        }
+
+        if (!rewardIds.contains("main_xp")) return failure(source, "Main XP reward is missing.");
+        if (!rewardIds.contains("main_iron")) return failure(source, "Main iron reward is missing.");
+        if (rewardIds.contains("bonus_xp") != optionalCompleted) return failure(source, "Optional reward eligibility is incorrect.");
+        if (rewardIds.size() != (optionalCompleted ? 3 : 2)) return failure(source, "Unexpected reward entries were unlocked.");
+
+        return success(source, "Earned rewards verified successfully.");
     }
 
-    private static int activateNext(CommandSourceStack source) throws CommandSyntaxException
+
+    
+    private static int verifyNext(CommandSourceStack source) throws CommandSyntaxException
     {
         CampaignSavedData data = CampaignSavedData.get(source.getServer());
         QuestManager questManager = createQuestManager(data);
 
-        if (!questManager.activateNextQuest(getTestPlayerId(source), FIRST_QUEST_ID)) return failure(source, "Could not activate the second quest.");
+        Optional<QuestDefinition> activeQuest = questManager.getActiveQuestDefinition(getTestPlayerId(source));
 
-        return success(source, "Second test quest activated.");
+        if (activeQuest.isEmpty()) return failure(source, "No active quest found.");
+        if (!SECOND_QUEST_ID.equals(activeQuest.get().id())) return failure(source, "Second quest is not active.");
+
+        return success(source, "Second quest was automatically activated.");
     }
+
 
     private static int claim(CommandSourceStack source, String rewardId) throws CommandSyntaxException
     {
