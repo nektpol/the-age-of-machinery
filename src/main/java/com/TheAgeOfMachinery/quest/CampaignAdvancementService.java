@@ -118,4 +118,22 @@ public class CampaignAdvancementService
 
         return CampaignAdvancementResult.CAMPAIGN_COMPLETED;
     }
+    
+    public boolean addObjectiveProgress(UUID playerId, String objectiveId, int amount)
+    {
+        Objects.requireNonNull(playerId, "Player ID cannot be null.");
+        Objects.requireNonNull(objectiveId, "Objective ID cannot be null.");
+
+        if (amount <= 0) return false;
+
+        return questManager.addObjectiveProgress(playerId, objectiveId, amount);
+    }
+
+    public Optional<QuestDefinition> getActiveQuestDefinition(UUID playerId)
+    {
+        Objects.requireNonNull(playerId, "Player ID cannot be null.");
+
+        return questManager.getActiveQuestDefinition(playerId);
+    }
+
 }

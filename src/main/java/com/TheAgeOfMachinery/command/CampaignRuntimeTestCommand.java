@@ -1,14 +1,30 @@
+
 package com.TheAgeOfMachinery.command;
 
+import com.TheAgeOfMachinery.quest.CampaignAdvancementResult;
+import com.TheAgeOfMachinery.quest.PlayerQuestProgress;
+import com.TheAgeOfMachinery.quest.QuestDefinition;
+import com.TheAgeOfMachinery.quest.QuestObjective;
+import com.TheAgeOfMachinery.quest.QuestProgress;
+import com.TheAgeOfMachinery.reward.RewardClaimResult;
+import com.TheAgeOfMachinery.reward.RewardEntry;
 import com.TheAgeOfMachinery.runtime.CampaignRuntime;
+
+import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
 
 import javax.annotation.Nonnull;
 
@@ -18,7 +34,7 @@ public final class CampaignRuntimeTestCommand
     {
     }
 
-    
+
     public static void register(RegisterCommandsEvent event)
     {
         event.getDispatcher().register(
@@ -26,6 +42,22 @@ public final class CampaignRuntimeTestCommand
                 .requires(source -> source.hasPermission(2))
                 .then(Commands.literal("status").executes(context -> status(context.getSource())))
                 .then(Commands.literal("campaign").executes(context -> campaign(context.getSource())))
+                .then(Commands.literal("start").executes(context -> start(context.getSource())))
+                .then(Commands.literal("progress")
+                    .then(Commands.argument("objectiveId", Objects.requireNonNull(StringArgumentType.word()))
+                        .then(Commands.argument("amount", Objects.requireNonNull(IntegerArgumentType.integer(1)))
+                            .executes(context -> progress(context.getSource(), StringArgumentType.getString(context, "objectiveId"), IntegerArgumentType.getInteger(context, "amount"))))))
+                .then(Commands.literal("advance").executes(context -> advance(context.getSource())))
+                .then(Commands.literal("player").executes(context -> playerStatus(context.getSource())))
+                .then(Commands.literal("rewards").executes(context -> rewards(context.getSource())))
+                .then(Commands.literal("claim")
+                    .then(Commands.literal("first")
+                        .then(Commands.argument("rewardId", Objects.requireNonNull(StringArgumentType.word()))
+                            .executes(context -> claim(context.getSource(), 0, StringArgumentType.getString(context, "rewardId")))))
+                    .then(Commands.literal("second")
+                        .then(Commands.argument("rewardId", Objects.requireNonNull(StringArgumentType.word()))
+                            .executes(context -> claim(context.getSource(), 1, StringArgumentType.getString(context, "rewardId")))))
+                )
         );
     }
 
@@ -41,20 +73,12 @@ public final class CampaignRuntimeTestCommand
         return 1;
     }
 
-    private static void success(CommandSourceStack source, @Nonnull String text)
-    {
-        Component message = Objects.requireNonNull(Component.literal(text), "Runtime status message cannot be null.");
-
-        source.sendSuccess(() -> message, false);
-    }
-
-    
     private static int campaign(CommandSourceStack source)
     {
         CampaignRuntime runtime = CampaignRuntime.get(source.getServer());
         List<String> questIds = runtime.getCampaignQuestIds();
 
-        success(source, "Registered campaign quests: " + runtime.getCampaignQuestCount());
+        success(source, "Registered campaign quests: " + questIds.size());
 
         for (int index = 0; index < questIds.size(); index++)
         {
@@ -64,4 +88,127 @@ public final class CampaignRuntimeTestCommand
         return 1;
     }
 
+    private static int start(CommandSourceStack source) throws CommandSyntaxException
+    {
+        ServerPlayer player = source.getPlayerOrException();
+        CampaignRuntime runtime = CampaignRuntime.get(source.getServer());
+
+        if (!runtime.startCampaign(player.getUUID())) return failure(source, "Campaign already started or cannot be initialized.");
+
+        return success(source, "First campaign quest activated.");
+    }
+
+    private static int progress(CommandSourceStack source, String objectiveId, int amount) throws CommandSyntaxException
+    {
+        ServerPlayer player = source.getPlayerOrException();
+        CampaignRuntime runtime = CampaignRuntime.get(source.getServer());
+
+        if (!runtime.addObjectiveProgress(player.getUUID(), objectiveId, amount))
+        {
+            return failure(source, "Objective not found, inactive, or progress update rejected.");
+        }
+
+        return success(source, "Objective progress updated: " + objectiveId + " +" + amount);
+    }
+
+    private static int advance(CommandSourceStack source) throws CommandSyntaxException
+    {
+        ServerPlayer player = source.getPlayerOrException();
+        CampaignRuntime runtime = CampaignRuntime.get(source.getServer());
+
+        CampaignAdvancementResult result = runtime.advanceQuest(player.getUUID());
+
+        if (result == CampaignAdvancementResult.NEXT_QUEST_STARTED) return success(source, "Quest completed. Next quest activated and earned rewards unlocked.");
+        if (result == CampaignAdvancementResult.CAMPAIGN_COMPLETED) return success(source, "Final quest completed. Campaign finished.");
+
+        return failure(source, "Advancement rejected: " + result);
+    }
+
+    private static int playerStatus(CommandSourceStack source) throws CommandSyntaxException
+    {
+        ServerPlayer player = source.getPlayerOrException();
+        CampaignRuntime runtime = CampaignRuntime.get(source.getServer());
+        UUID playerId = player.getUUID();
+
+        Optional<PlayerQuestProgress> progressResult = runtime.getPlayerQuestProgress(playerId);
+
+        if (progressResult.isEmpty()) return failure(source, "Player campaign has not been initialized.");
+
+        PlayerQuestProgress playerProgress = progressResult.get();
+        Optional<QuestDefinition> activeDefinition = runtime.getActiveQuestDefinition(playerId);
+
+        if (activeDefinition.isEmpty())
+        {
+            success(source, "No active quest. Campaign may be completed.");
+            return 1;
+        }
+
+        QuestDefinition definition = activeDefinition.get();
+        QuestProgress activeProgress = playerProgress.getActiveQuestProgress().orElseThrow();
+
+        success(source, "Active quest: " + definition.title());
+
+        for (QuestObjective objective : definition.objectives())
+        {
+            String category = objective.optional() ? "Optional" : "Mandatory";
+            int currentAmount = activeProgress.getObjectiveProgress(objective.id());
+
+            success(source, category + ": " + objective.description() + " | " + currentAmount + "/" + objective.requiredAmount());
+        }
+
+        return 1;
+    }
+
+    private static int rewards(CommandSourceStack source) throws CommandSyntaxException
+    {
+        ServerPlayer player = source.getPlayerOrException();
+        CampaignRuntime runtime = CampaignRuntime.get(source.getServer());
+        Map<String, List<RewardEntry>> groups = runtime.getUnlockedRewards(player.getUUID());
+
+        if (groups.isEmpty()) return success(source, "No unlocked rewards.");
+
+        for (Map.Entry<String, List<RewardEntry>> group : groups.entrySet())
+        {
+            success(source, "Quest rewards: " + group.getKey());
+
+            for (RewardEntry entry : group.getValue())
+            {
+                success(source, entry.rewardId() + " | " + entry.reward().amount() + " | " + entry.state());
+            }
+        }
+
+        return 1;
+    }
+
+    private static int claim(CommandSourceStack source, int questIndex, String rewardId) throws CommandSyntaxException
+    {
+        ServerPlayer player = source.getPlayerOrException();
+        CampaignRuntime runtime = CampaignRuntime.get(source.getServer());
+        List<String> questIds = runtime.getCampaignQuestIds();
+
+        if (questIndex >= questIds.size()) return failure(source, "Quest is not registered.");
+
+        String questId = questIds.get(questIndex);
+        RewardClaimResult result = runtime.claimReward(player, questId, rewardId);
+
+        if (result == RewardClaimResult.SUCCESS) return success(source, "Reward successfully claimed: " + rewardId);
+
+        return failure(source, "Reward claim rejected: " + result);
+    }
+
+    private static int success(CommandSourceStack source, @Nonnull String text)
+    {
+        Component message = Objects.requireNonNull(Component.literal(text), "Success message cannot be null.");
+
+        source.sendSuccess(() -> message, false);
+        return 1;
+    }
+
+    private static int failure(CommandSourceStack source, @Nonnull String text)
+    {
+        Component message = Objects.requireNonNull(Component.literal(text), "Failure message cannot be null.");
+
+        source.sendFailure(message);
+        return 0;
+    }
 }
