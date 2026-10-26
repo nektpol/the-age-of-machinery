@@ -11,7 +11,6 @@ import com.TheAgeOfMachinery.command.RewardTestCommand;
 import com.TheAgeOfMachinery.command.RewardClaimTestCommand;
 import com.TheAgeOfMachinery.command.SaveTestCommand;
 import com.TheAgeOfMachinery.command.QuestPersistenceTestCommand;
-import com.TheAgeOfMachinery.reward.RewardPersistenceTestCommand;
 import com.TheAgeOfMachinery.command.ManagerIntegrationTestCommand;
 import com.TheAgeOfMachinery.command.CampaignAdvancementTestCommand;
 import com.TheAgeOfMachinery.command.StateIsolationTestCommand;
@@ -20,7 +19,10 @@ import com.TheAgeOfMachinery.command.RewardRevisionTestCommand;
 import com.TheAgeOfMachinery.command.CampaignFailureTestCommand;
 import com.TheAgeOfMachinery.command.CampaignRuntimeTestCommand;
 
+import com.TheAgeOfMachinery.reward.RewardPersistenceTestCommand;
+
 import com.TheAgeOfMachinery.runtime.CampaignRuntime;
+import com.TheAgeOfMachinery.runtime.CampaignPlayerEvents;
 
 import net.neoforged.neoforge.common.NeoForge;
 
@@ -50,6 +52,7 @@ public class TheAgeofMachinery
         
         NeoForge.EVENT_BUS.addListener(CampaignRuntime::onServerStarted);
         NeoForge.EVENT_BUS.addListener(CampaignRuntime::onServerStopped);
+        NeoForge.EVENT_BUS.addListener(CampaignPlayerEvents::onPlayerLoggedIn);
     }
 }
 

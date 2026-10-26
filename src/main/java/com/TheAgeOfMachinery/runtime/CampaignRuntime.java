@@ -142,6 +142,24 @@ public final class CampaignRuntime
 
         return rewardManager.claimReward(player.getUUID(), questId, rewardId, new MinecraftRewardDelivery(player));
     }
+    
+    public boolean initializePlayerCampaign(ServerPlayer player)
+    {
+        Objects.requireNonNull(player, "Player cannot be null.");
 
+        if (player.getServer() != server) throw new IllegalArgumentException("Player belongs to another Minecraft server.");
+
+        UUID playerId = player.getUUID();
+        Optional<PlayerQuestProgress> existing = savedData.getPlayerQuestProgress(playerId);
+
+        if (existing.isPresent() && !existing.get().getQuestProgressSnapshot().isEmpty()) return false;
+
+        if (!advancementService.startFirstQuest(playerId))
+        {
+            throw new IllegalStateException("Failed to initialize campaign for player: " + playerId);
+        }
+
+        return true;
+    }
 }
 
