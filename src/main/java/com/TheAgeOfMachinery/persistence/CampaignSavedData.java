@@ -243,4 +243,28 @@ public class CampaignSavedData extends SavedData
         testValue++;
         setDirty();
     }
+    
+    public boolean tryStorePlayerQuestProgress(UUID playerId, long expectedRevision, PlayerQuestProgress progress)
+    {
+        Objects.requireNonNull(playerId, "Player ID cannot be null.");
+        Objects.requireNonNull(progress, "Player progress cannot be null.");
+
+        if (!playerId.equals(progress.getPlayerId())) throw new IllegalArgumentException("Quest progress belongs to another player.");
+        if (expectedRevision < -1) throw new IllegalArgumentException("Invalid expected revision.");
+
+        PlayerState current = players.get(playerId);
+
+        if (current == null && expectedRevision != -1) return false;
+        if (current != null && current.revision() != expectedRevision) return false;
+
+        PlayerQuestProgress committedQuests = copyQuests(progress);
+        PlayerRewardInventory rewards = current == null ? null : current.rewards();
+        long nextRevision = current == null ? 1 : current.revision() + 1;
+
+        players.put(playerId, new PlayerState(committedQuests, rewards, nextRevision));
+        setDirty();
+
+        return true;
+    }
+
 }

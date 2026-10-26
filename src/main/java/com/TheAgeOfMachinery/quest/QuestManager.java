@@ -13,7 +13,6 @@ import java.util.UUID;
 public class QuestManager
 {
     private final CampaignSavedData savedData;
-
     private final Map<String, QuestDefinition> questDefinitions = new HashMap<>();
     private final List<String> questOrder = new ArrayList<>();
 
@@ -44,21 +43,32 @@ public class QuestManager
     {
         Objects.requireNonNull(playerId, "Player ID cannot be null.");
 
-        Optional<PlayerQuestProgress> existing = savedData.getPlayerQuestProgress(playerId);
+        Optional<CampaignSavedData.PlayerSnapshot> snapshotResult = savedData.getPlayerSnapshot(playerId);
 
-        if (existing.isPresent()) return existing.get();
+        if (snapshotResult.isPresent() && snapshotResult.get().quests() != null)
+        {
+            return snapshotResult.get().quests();
+        }
 
         PlayerQuestProgress progress = new PlayerQuestProgress(playerId);
-        savedData.storePlayerQuestProgress(progress);
+        long expectedRevision = snapshotResult.map(CampaignSavedData.PlayerSnapshot::revision).orElse(-1L);
 
-        return progress;
+        if (savedData.tryStorePlayerQuestProgress(playerId, expectedRevision, progress)) return progress;
+
+        return savedData.getPlayerQuestProgress(playerId).orElseThrow(() -> new IllegalStateException("Player quest initialization failed."));
     }
 
     public boolean startFirstQuest(UUID playerId)
     {
+        Objects.requireNonNull(playerId, "Player ID cannot be null.");
+
         if (questOrder.isEmpty()) return false;
 
-        PlayerQuestProgress progress = getOrCreatePlayerProgress(playerId);
+        Optional<CampaignSavedData.PlayerSnapshot> snapshotResult = savedData.getPlayerSnapshot(playerId);
+
+        PlayerQuestProgress progress = snapshotResult.isPresent() && snapshotResult.get().quests() != null
+            ? snapshotResult.get().quests()
+            : new PlayerQuestProgress(playerId);
 
         if (!progress.getQuestProgressSnapshot().isEmpty()) return false;
 
@@ -66,37 +76,46 @@ public class QuestManager
 
         if (!progress.activateQuest(firstQuest)) return false;
 
-        savedData.storePlayerQuestProgress(progress);
-        return true;
+        long expectedRevision = snapshotResult.map(CampaignSavedData.PlayerSnapshot::revision).orElse(-1L);
+
+        return savedData.tryStorePlayerQuestProgress(playerId, expectedRevision, progress);
     }
 
     public Optional<QuestDefinition> getActiveQuestDefinition(UUID playerId)
     {
-        PlayerQuestProgress progress = getOrCreatePlayerProgress(playerId);
+        Optional<PlayerQuestProgress> result = savedData.getPlayerQuestProgress(playerId);
 
-        if (!progress.hasActiveQuest()) return Optional.empty();
+        if (result.isEmpty() || !result.get().hasActiveQuest()) return Optional.empty();
 
-        return getQuestDefinition(progress.getActiveQuestId());
+        return getQuestDefinition(result.get().getActiveQuestId());
     }
 
     public boolean addObjectiveProgress(UUID playerId, String objectiveId, int amount)
     {
-        PlayerQuestProgress progress = getOrCreatePlayerProgress(playerId);
+        Optional<CampaignSavedData.PlayerSnapshot> snapshotResult = savedData.getPlayerSnapshot(playerId);
 
-        if (!progress.hasActiveQuest()) return false;
+        if (snapshotResult.isEmpty()) return false;
+
+        CampaignSavedData.PlayerSnapshot snapshot = snapshotResult.get();
+        PlayerQuestProgress progress = snapshot.quests();
+
+        if (progress == null || !progress.hasActiveQuest()) return false;
 
         QuestDefinition definition = questDefinitions.get(progress.getActiveQuestId());
 
         if (definition == null) return false;
         if (!progress.addObjectiveProgress(definition, objectiveId, amount)) return false;
 
-        savedData.storePlayerQuestProgress(progress);
-        return true;
+        return savedData.tryStorePlayerQuestProgress(playerId, snapshot.revision(), progress);
     }
 
     public boolean canAdvanceQuest(UUID playerId)
     {
-        PlayerQuestProgress progress = getOrCreatePlayerProgress(playerId);
+        Optional<PlayerQuestProgress> result = savedData.getPlayerQuestProgress(playerId);
+
+        if (result.isEmpty()) return false;
+
+        PlayerQuestProgress progress = result.get();
 
         if (!progress.hasActiveQuest()) return false;
 
@@ -109,17 +128,21 @@ public class QuestManager
 
     public boolean completeActiveQuest(UUID playerId)
     {
-        PlayerQuestProgress progress = getOrCreatePlayerProgress(playerId);
+        Optional<CampaignSavedData.PlayerSnapshot> snapshotResult = savedData.getPlayerSnapshot(playerId);
 
-        if (!progress.hasActiveQuest()) return false;
+        if (snapshotResult.isEmpty()) return false;
+
+        CampaignSavedData.PlayerSnapshot snapshot = snapshotResult.get();
+        PlayerQuestProgress progress = snapshot.quests();
+
+        if (progress == null || !progress.hasActiveQuest()) return false;
 
         QuestDefinition definition = questDefinitions.get(progress.getActiveQuestId());
 
         if (definition == null) return false;
         if (!progress.completeActiveQuest(definition)) return false;
 
-        savedData.storePlayerQuestProgress(progress);
-        return true;
+        return savedData.tryStorePlayerQuestProgress(playerId, snapshot.revision(), progress);
     }
 
     public Optional<QuestDefinition> getNextQuestDefinition(String completedQuestId)
@@ -132,15 +155,19 @@ public class QuestManager
 
         if (nextIndex >= questOrder.size()) return Optional.empty();
 
-        String nextQuestId = questOrder.get(nextIndex);
-
-        return getQuestDefinition(nextQuestId);
+        return getQuestDefinition(questOrder.get(nextIndex));
     }
 
     public boolean activateNextQuest(UUID playerId, String completedQuestId)
     {
-        PlayerQuestProgress progress = getOrCreatePlayerProgress(playerId);
+        Optional<CampaignSavedData.PlayerSnapshot> snapshotResult = savedData.getPlayerSnapshot(playerId);
 
+        if (snapshotResult.isEmpty()) return false;
+
+        CampaignSavedData.PlayerSnapshot snapshot = snapshotResult.get();
+        PlayerQuestProgress progress = snapshot.quests();
+
+        if (progress == null) return false;
         if (!progress.hasCompletedQuest(completedQuestId)) return false;
         if (progress.hasActiveQuest()) return false;
 
@@ -149,8 +176,7 @@ public class QuestManager
         if (nextQuest.isEmpty()) return false;
         if (!progress.activateQuest(nextQuest.get())) return false;
 
-        savedData.storePlayerQuestProgress(progress);
-        return true;
+        return savedData.tryStorePlayerQuestProgress(playerId, snapshot.revision(), progress);
     }
 
     public List<String> getQuestOrderSnapshot()
