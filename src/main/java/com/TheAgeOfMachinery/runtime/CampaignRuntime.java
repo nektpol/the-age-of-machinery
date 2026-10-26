@@ -4,13 +4,13 @@ import com.TheAgeOfMachinery.integration.MinecraftRewardDelivery;
 import com.TheAgeOfMachinery.persistence.CampaignSavedData;
 import com.TheAgeOfMachinery.quest.CampaignAdvancementResult;
 import com.TheAgeOfMachinery.quest.CampaignAdvancementService;
+import com.TheAgeOfMachinery.quest.CampaignDefinition;
 import com.TheAgeOfMachinery.quest.PlayerQuestProgress;
 import com.TheAgeOfMachinery.quest.QuestDefinition;
+import com.TheAgeOfMachinery.reward.QuestRewardDefinition;
 import com.TheAgeOfMachinery.reward.RewardClaimResult;
 import com.TheAgeOfMachinery.reward.RewardEntry;
 import com.TheAgeOfMachinery.reward.RewardManager;
-import com.TheAgeOfMachinery.quest.CampaignDefinition;
-import com.TheAgeOfMachinery.reward.QuestRewardDefinition;
 
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -29,13 +29,12 @@ public final class CampaignRuntime
     private static final Map<MinecraftServer, CampaignRuntime> ACTIVE_RUNTIMES = new IdentityHashMap<>();
 
     private final UUID sessionId = UUID.randomUUID();
+    private final MinecraftServer server;
+    private final CampaignSavedData savedData;
     private final CampaignAdvancementService advancementService;
     private final RewardManager rewardManager;
     private final CampaignDefinition campaign;
 
-    private final MinecraftServer server;
-    private final CampaignSavedData savedData;
-  
     private CampaignRuntime(MinecraftServer server)
     {
         this.server = Objects.requireNonNull(server, "Minecraft server cannot be null.");
@@ -70,6 +69,8 @@ public final class CampaignRuntime
     {
         Objects.requireNonNull(server, "Minecraft server cannot be null.");
 
+        if (!server.isSameThread()) throw new IllegalStateException("Campaign runtime must be accessed on the Minecraft server thread.");
+
         CampaignRuntime runtime = ACTIVE_RUNTIMES.get(server);
 
         if (runtime == null) throw new IllegalStateException("Campaign runtime has not been initialized for this server.");
@@ -77,79 +78,36 @@ public final class CampaignRuntime
         return runtime;
     }
 
-    public UUID getSessionId()
+    private void requireServerThread()
     {
-        return sessionId;
+        if (!server.isSameThread()) throw new IllegalStateException("Campaign operations must execute on the Minecraft server thread.");
     }
 
-    public CampaignAdvancementService getAdvancementService()
+    private UUID validatePlayer(ServerPlayer player)
     {
-        return advancementService;
-    }
-
-    public RewardManager getRewardManager()
-    {
-        return rewardManager;
-    }
-
-    public int getCampaignQuestCount()
-    {
-        return campaign.questCount();
-    }
-
-    public List<String> getCampaignQuestIds()
-    {
-        return campaign.getQuestIds();
-    }
-    
-    public boolean startCampaign(UUID playerId)
-    {
-        return advancementService.startFirstQuest(playerId);
-    }
-
-    public boolean addObjectiveProgress(UUID playerId, String objectiveId, int amount)
-    {
-        return advancementService.addObjectiveProgress(playerId, objectiveId, amount);
-    }
-
-    public CampaignAdvancementResult advanceQuest(UUID playerId)
-    {
-        return advancementService.advanceQuest(playerId);
-    }
-
-    public Optional<QuestDefinition> getActiveQuestDefinition(UUID playerId)
-    {
-        return advancementService.getActiveQuestDefinition(playerId);
-    }
-
-    public Optional<PlayerQuestProgress> getPlayerQuestProgress(UUID playerId)
-    {
-        return savedData.getPlayerQuestProgress(playerId);
-    }
-
-    public Map<String, List<RewardEntry>> getUnlockedRewards(UUID playerId)
-    {
-        return rewardManager.getPlayerRewardsSnapshot(playerId);
-    }
-
-    public RewardClaimResult claimReward(ServerPlayer player, String questId, String rewardId)
-    {
+        requireServerThread();
         Objects.requireNonNull(player, "Player cannot be null.");
-        Objects.requireNonNull(questId, "Quest ID cannot be null.");
-        Objects.requireNonNull(rewardId, "Reward ID cannot be null.");
 
         if (player.getServer() != server) throw new IllegalArgumentException("Player belongs to another Minecraft server.");
 
-        return rewardManager.claimReward(player.getUUID(), questId, rewardId, new MinecraftRewardDelivery(player));
+        return player.getUUID();
     }
-    
+
+    private UUID validateOnlinePlayer(ServerPlayer player)
+    {
+        UUID playerId = Objects.requireNonNull(validatePlayer(player),"Player cannot be null.");
+        
+        if (server.getPlayerList().getPlayer(playerId) != player)
+        {
+            throw new IllegalStateException("Player is not connected to this Minecraft server.");
+        }
+
+        return playerId;
+    }
+
     public boolean initializePlayerCampaign(ServerPlayer player)
     {
-        Objects.requireNonNull(player, "Player cannot be null.");
-
-        if (player.getServer() != server) throw new IllegalArgumentException("Player belongs to another Minecraft server.");
-
-        UUID playerId = player.getUUID();
+        UUID playerId = validatePlayer(player);
         Optional<PlayerQuestProgress> existing = savedData.getPlayerQuestProgress(playerId);
 
         if (existing.isPresent() && !existing.get().getQuestProgressSnapshot().isEmpty()) return false;
@@ -161,5 +119,75 @@ public final class CampaignRuntime
 
         return true;
     }
-}
 
+    public boolean startCampaign(ServerPlayer player)
+    {
+        UUID playerId = validateOnlinePlayer(player);
+
+        return advancementService.startFirstQuest(playerId);
+    }
+
+    public boolean addObjectiveProgress(ServerPlayer player, String objectiveId, int amount)
+    {
+        UUID playerId = validateOnlinePlayer(player);
+        Objects.requireNonNull(objectiveId, "Objective ID cannot be null.");
+
+        if (objectiveId.isBlank() || amount <= 0) return false;
+
+        return advancementService.addObjectiveProgress(playerId, objectiveId, amount);
+    }
+
+    public CampaignAdvancementResult advanceQuest(ServerPlayer player)
+    {
+        UUID playerId = validateOnlinePlayer(player);
+
+        return advancementService.advanceQuest(playerId);
+    }
+
+    public Optional<QuestDefinition> getActiveQuestDefinition(ServerPlayer player)
+    {
+        UUID playerId = validatePlayer(player);
+
+        return advancementService.getActiveQuestDefinition(playerId);
+    }
+
+    public Optional<PlayerQuestProgress> getPlayerQuestProgress(ServerPlayer player)
+    {
+        UUID playerId = validatePlayer(player);
+
+        return savedData.getPlayerQuestProgress(playerId);
+    }
+
+    public Map<String, List<RewardEntry>> getUnlockedRewards(ServerPlayer player)
+    {
+        UUID playerId = validatePlayer(player);
+
+        return rewardManager.getPlayerRewardsSnapshot(playerId);
+    }
+
+    public RewardClaimResult claimReward(ServerPlayer player, String questId, String rewardId)
+    {
+        UUID playerId = validateOnlinePlayer(player);
+        Objects.requireNonNull(questId, "Quest ID cannot be null.");
+        Objects.requireNonNull(rewardId, "Reward ID cannot be null.");
+
+        if (questId.isBlank() || rewardId.isBlank()) return RewardClaimResult.NOT_FOUND;
+
+        return rewardManager.claimReward(playerId, questId, rewardId, new MinecraftRewardDelivery(player));
+    }
+
+    public UUID getSessionId()
+    {
+        return sessionId;
+    }
+
+    public int getCampaignQuestCount()
+    {
+        return campaign.questCount();
+    }
+
+    public List<String> getCampaignQuestIds()
+    {
+        return campaign.getQuestIds();
+    }
+}

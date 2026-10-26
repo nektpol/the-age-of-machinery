@@ -25,7 +25,7 @@ public final class CampaignPlayerEvents
 
         if (!runtime.initializePlayerCampaign(player)) return;
 
-        Optional<QuestDefinition> activeQuest = runtime.getActiveQuestDefinition(player.getUUID());
+        Optional<QuestDefinition> activeQuest = runtime.getActiveQuestDefinition(player);
 
         if (activeQuest.isPresent())
         {

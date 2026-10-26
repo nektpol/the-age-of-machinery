@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.UUID;
 
 import javax.annotation.Nonnull;
 
@@ -33,7 +32,6 @@ public final class CampaignRuntimeTestCommand
     private CampaignRuntimeTestCommand()
     {
     }
-
 
     public static void register(RegisterCommandsEvent event)
     {
@@ -61,14 +59,13 @@ public final class CampaignRuntimeTestCommand
         );
     }
 
-
     private static int status(CommandSourceStack source)
     {
         CampaignRuntime runtime = CampaignRuntime.get(source.getServer());
 
         success(source, "Campaign runtime session: " + runtime.getSessionId());
-        success(source, "Advancement service initialized: " + (runtime.getAdvancementService() != null));
-        success(source, "Reward manager initialized: " + (runtime.getRewardManager() != null));
+        success(source, "Campaign registered: " + runtime.getCampaignQuestCount() + " quests.");
+        success(source, "Server-thread validation: Passed.");
 
         return 1;
     }
@@ -93,7 +90,7 @@ public final class CampaignRuntimeTestCommand
         ServerPlayer player = source.getPlayerOrException();
         CampaignRuntime runtime = CampaignRuntime.get(source.getServer());
 
-        if (!runtime.startCampaign(player.getUUID())) return failure(source, "Campaign already started or cannot be initialized.");
+        if (!runtime.startCampaign(player)) return failure(source, "Campaign already started or cannot be initialized.");
 
         return success(source, "First campaign quest activated.");
     }
@@ -103,7 +100,7 @@ public final class CampaignRuntimeTestCommand
         ServerPlayer player = source.getPlayerOrException();
         CampaignRuntime runtime = CampaignRuntime.get(source.getServer());
 
-        if (!runtime.addObjectiveProgress(player.getUUID(), objectiveId, amount))
+        if (!runtime.addObjectiveProgress(player, objectiveId, amount))
         {
             return failure(source, "Objective not found, inactive, or progress update rejected.");
         }
@@ -116,7 +113,7 @@ public final class CampaignRuntimeTestCommand
         ServerPlayer player = source.getPlayerOrException();
         CampaignRuntime runtime = CampaignRuntime.get(source.getServer());
 
-        CampaignAdvancementResult result = runtime.advanceQuest(player.getUUID());
+        CampaignAdvancementResult result = runtime.advanceQuest(player);
 
         if (result == CampaignAdvancementResult.NEXT_QUEST_STARTED) return success(source, "Quest completed. Next quest activated and earned rewards unlocked.");
         if (result == CampaignAdvancementResult.CAMPAIGN_COMPLETED) return success(source, "Final quest completed. Campaign finished.");
@@ -128,14 +125,13 @@ public final class CampaignRuntimeTestCommand
     {
         ServerPlayer player = source.getPlayerOrException();
         CampaignRuntime runtime = CampaignRuntime.get(source.getServer());
-        UUID playerId = player.getUUID();
 
-        Optional<PlayerQuestProgress> progressResult = runtime.getPlayerQuestProgress(playerId);
+        Optional<PlayerQuestProgress> progressResult = runtime.getPlayerQuestProgress(player);
 
         if (progressResult.isEmpty()) return failure(source, "Player campaign has not been initialized.");
 
         PlayerQuestProgress playerProgress = progressResult.get();
-        Optional<QuestDefinition> activeDefinition = runtime.getActiveQuestDefinition(playerId);
+        Optional<QuestDefinition> activeDefinition = runtime.getActiveQuestDefinition(player);
 
         if (activeDefinition.isEmpty())
         {
@@ -163,7 +159,7 @@ public final class CampaignRuntimeTestCommand
     {
         ServerPlayer player = source.getPlayerOrException();
         CampaignRuntime runtime = CampaignRuntime.get(source.getServer());
-        Map<String, List<RewardEntry>> groups = runtime.getUnlockedRewards(player.getUUID());
+        Map<String, List<RewardEntry>> groups = runtime.getUnlockedRewards(player);
 
         if (groups.isEmpty()) return success(source, "No unlocked rewards.");
 
@@ -186,7 +182,7 @@ public final class CampaignRuntimeTestCommand
         CampaignRuntime runtime = CampaignRuntime.get(source.getServer());
         List<String> questIds = runtime.getCampaignQuestIds();
 
-        if (questIndex >= questIds.size()) return failure(source, "Quest is not registered.");
+        if (questIndex < 0 || questIndex >= questIds.size()) return failure(source, "Quest is not registered.");
 
         String questId = questIds.get(questIndex);
         RewardClaimResult result = runtime.claimReward(player, questId, rewardId);
