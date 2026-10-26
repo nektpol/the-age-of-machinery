@@ -2,6 +2,7 @@ package com.TheAgeOfMachinery.reward;
 
 import com.TheAgeOfMachinery.integration.MinecraftRewardDelivery;
 import com.TheAgeOfMachinery.persistence.CampaignSavedData;
+import com.TheAgeOfMachinery.reward.RewardManager;
 
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 
@@ -55,9 +56,7 @@ public final class RewardPersistenceTestCommand
         CampaignSavedData data = CampaignSavedData.get(source.getServer());
         UUID testPlayerId = getTestPlayerId(source);
 
-        if (data.getPlayerRewardInventory(testPlayerId).isPresent()) return failure(source, "Test reward inventory already exists.");
-
-        PlayerRewardInventory inventory = new PlayerRewardInventory(testPlayerId);
+        RewardManager manager = new RewardManager(data);
 
         List<RewardDefinition> rewards = List.of(
             new ExperienceReward("main_xp", 100),
@@ -65,37 +64,29 @@ public final class RewardPersistenceTestCommand
             new ExperienceReward("bonus_xp", 50)
         );
 
-        if (!inventory.unlockRewards(TEST_QUEST_ID, rewards)) return failure(source, "Could not unlock test rewards.");
-
-        data.storePlayerRewardInventory(inventory);
+        if (!manager.unlockQuestRewards(testPlayerId, TEST_QUEST_ID, rewards)) return failure(source, "Test reward inventory already exists.");
 
         return success(source, "Three persistent test rewards unlocked.");
     }
 
+
     private static int claim(CommandSourceStack source, String rewardId) throws CommandSyntaxException
     {
         CampaignSavedData data = CampaignSavedData.get(source.getServer());
-        Optional<PlayerRewardInventory> result = data.getPlayerRewardInventory(getTestPlayerId(source));
-
-        if (result.isEmpty()) return failure(source, "Test rewards have not been unlocked.");
-
+        UUID testPlayerId = getTestPlayerId(source);
         ServerPlayer player = source.getPlayerOrException();
-        PlayerRewardInventory inventory = result.get();
-        MinecraftRewardDelivery delivery = new MinecraftRewardDelivery(player);
 
-        RewardClaimResult claimResult = inventory.claimReward(TEST_QUEST_ID, rewardId, delivery);
+        RewardManager manager = new RewardManager(data);
+        RewardClaimResult result = manager.claimReward(testPlayerId, TEST_QUEST_ID, rewardId, new MinecraftRewardDelivery(player));
 
-        if (claimResult == RewardClaimResult.SUCCESS)
-        {
-            data.storePlayerRewardInventory(inventory);
-            return success(source, "Reward claimed successfully: " + rewardId);
-        }
-
-        if (claimResult == RewardClaimResult.ALREADY_CLAIMED) return failure(source, "Reward has already been claimed.");
-        if (claimResult == RewardClaimResult.DELIVERY_FAILED) return failure(source, "Reward delivery failed.");
+        if (result == RewardClaimResult.SUCCESS) return success(source, "Reward claimed successfully: " + rewardId);
+        if (result == RewardClaimResult.ALREADY_CLAIMED) return failure(source, "Reward has already been claimed.");
+        if (result == RewardClaimResult.DELIVERY_FAILED) return failure(source, "Reward delivery failed.");
+        if (result == RewardClaimResult.CLAIM_IN_PROGRESS) return failure(source, "Another reward claim is in progress.");
 
         return failure(source, "Reward not found.");
     }
+
 
     private static int status(CommandSourceStack source) throws CommandSyntaxException
     {

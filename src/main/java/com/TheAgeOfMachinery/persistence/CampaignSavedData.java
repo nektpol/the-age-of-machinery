@@ -175,21 +175,6 @@ public class CampaignSavedData extends SavedData
         return Optional.ofNullable(copyQuests(state.quests()));
     }
 
-    public void storePlayerQuestProgress(PlayerQuestProgress progress)
-    {
-        Objects.requireNonNull(progress, "Player progress cannot be null.");
-
-        UUID playerId = progress.getPlayerId();
-        PlayerState existing = players.get(playerId);
-
-        PlayerRewardInventory rewards = existing == null ? null : existing.rewards();
-        long revision = existing == null ? 1 : existing.revision() + 1;
-
-        if (claimsInProgress.contains(playerId)) throw new IllegalStateException("Cannot replace player state during reward delivery.");
-        players.put(playerId, new PlayerState(copyQuests(progress), rewards, revision));
-        setDirty();
-    }
-
     public Optional<PlayerRewardInventory> getPlayerRewardInventory(UUID playerId)
     {
         Objects.requireNonNull(playerId, "Player ID cannot be null.");
@@ -199,21 +184,6 @@ public class CampaignSavedData extends SavedData
         if (state == null) return Optional.empty();
 
         return Optional.ofNullable(copyRewards(state.rewards()));
-    }
-
-    public void storePlayerRewardInventory(PlayerRewardInventory inventory)
-    {
-        Objects.requireNonNull(inventory, "Reward inventory cannot be null.");
-
-        UUID playerId = inventory.getPlayerId();
-        PlayerState existing = players.get(playerId);
-
-        PlayerQuestProgress quests = existing == null ? null : existing.quests();
-        long revision = existing == null ? 1 : existing.revision() + 1;
-
-        if (claimsInProgress.contains(playerId)) throw new IllegalStateException("Cannot replace player state during reward delivery.");
-        players.put(playerId, new PlayerState(quests, copyRewards(inventory), revision));
-        setDirty();
     }
 
     public boolean commitAdvancement(UUID playerId, long expectedRevision, PlayerQuestProgress updatedQuests, PlayerRewardInventory updatedRewards)

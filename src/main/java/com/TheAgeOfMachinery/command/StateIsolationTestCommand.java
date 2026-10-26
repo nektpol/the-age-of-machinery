@@ -96,23 +96,22 @@ public final class StateIsolationTestCommand
         CampaignSavedData data = CampaignSavedData.get(source.getServer());
         UUID playerId = getTestPlayerId(source);
 
-        Optional<PlayerQuestProgress> result = data.getPlayerQuestProgress(playerId);
+        Optional<CampaignSavedData.PlayerSnapshot> result = data.getPlayerSnapshot(playerId);
 
-        if (result.isEmpty()) return failure(source, "Initialize the test first.");
+        if (result.isEmpty() || result.get().quests() == null) return failure(source, "Initialize the test first.");
 
-        PlayerQuestProgress detached = result.get();
+        CampaignSavedData.PlayerSnapshot snapshot = result.get();
+        PlayerQuestProgress detached = snapshot.quests();
         int originalValue = getMainProgress(detached);
 
         if (originalValue != 0) return failure(source, "Expected fresh progress of 0/3.");
-
         if (!detached.addObjectiveProgress(TEST_QUEST, OBJECTIVE_ID, 1)) return failure(source, "Could not modify detached quest progress.");
 
         int persistedValue = getMainProgress(data.getPlayerQuestProgress(playerId).orElseThrow());
 
         if (persistedValue != originalValue) return failure(source, "Unsafe mutation detected: detached changes affected saved state.");
 
-        data.storePlayerQuestProgress(detached);
-
+        if (!data.tryStorePlayerQuestProgress(playerId, snapshot.revision(), detached)) return failure(source, "Revision-checked quest storage rejected the update.");
         if (!detached.addObjectiveProgress(TEST_QUEST, OBJECTIVE_ID, 1)) return failure(source, "Could not modify the original input after storing.");
 
         persistedValue = getMainProgress(data.getPlayerQuestProgress(playerId).orElseThrow());
@@ -166,7 +165,10 @@ public final class StateIsolationTestCommand
             return failure(source, "Test rewards already unlocked.");
         }
 
-        PlayerRewardInventory detached = data.getPlayerRewardInventory(playerId).orElseThrow();
+        CampaignSavedData.PlayerSnapshot snapshot = data.getPlayerSnapshot(playerId).orElseThrow();
+        PlayerRewardInventory detached = snapshot.rewards();
+
+        if (detached == null) return failure(source, "Reward inventory is missing.");
 
         if (!detached.unlockRewards(LOCAL_ONLY_ID, List.of(new ExperienceReward("local_xp", 1))))
         {
@@ -177,7 +179,10 @@ public final class StateIsolationTestCommand
 
         if (persisted.hasUnlockedRewardsFromQuest(LOCAL_ONLY_ID)) return failure(source, "Unsafe reward mutation detected.");
 
-        data.storePlayerRewardInventory(detached);
+        if (!data.tryStorePlayerRewardInventory(playerId, snapshot.revision(), detached))
+        {
+            return failure(source, "Revision-checked reward storage rejected the update.");
+        }
 
         if (!detached.unlockRewards("theageofmachinery:debug_after_store", List.of(new ExperienceReward("after_store_xp", 1))))
         {

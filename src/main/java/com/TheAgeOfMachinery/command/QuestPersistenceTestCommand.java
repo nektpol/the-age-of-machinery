@@ -70,13 +70,16 @@ public final class QuestPersistenceTestCommand
         CampaignSavedData data = CampaignSavedData.get(source.getServer());
         UUID testPlayerId = getTestPlayerId(source);
 
-        if (data.getPlayerQuestProgress(testPlayerId).isPresent()) return failure(source, "Test quest data already exists.");
+        Optional<CampaignSavedData.PlayerSnapshot> snapshotResult = data.getPlayerSnapshot(testPlayerId);
+
+        if (snapshotResult.isPresent() && snapshotResult.get().quests() != null) return failure(source, "Test quest data already exists.");
+
+        long expectedRevision = snapshotResult.isPresent() ? snapshotResult.get().revision() : -1L;
 
         PlayerQuestProgress progress = new PlayerQuestProgress(testPlayerId);
 
         if (!progress.activateQuest(TEST_QUEST)) return failure(source, "Could not activate test quest.");
-
-        data.storePlayerQuestProgress(progress);
+        if (!data.tryStorePlayerQuestProgress(testPlayerId, expectedRevision, progress)) return failure(source, "Could not save test quest progress.");
 
         return success(source, "Test quest created and activated.");
     }
@@ -84,15 +87,17 @@ public final class QuestPersistenceTestCommand
     private static int addProgress(CommandSourceStack source, String objectiveId, int amount) throws CommandSyntaxException
     {
         CampaignSavedData data = CampaignSavedData.get(source.getServer());
-        Optional<PlayerQuestProgress> result = data.getPlayerQuestProgress(getTestPlayerId(source));
+        UUID testPlayerId = getTestPlayerId(source);
 
-        if (result.isEmpty()) return failure(source, "Test quest not initialized.");
+        Optional<CampaignSavedData.PlayerSnapshot> snapshotResult = data.getPlayerSnapshot(testPlayerId);
 
-        PlayerQuestProgress progress = result.get();
+        if (snapshotResult.isEmpty() || snapshotResult.get().quests() == null) return failure(source, "Test quest not initialized.");
+
+        CampaignSavedData.PlayerSnapshot snapshot = snapshotResult.get();
+        PlayerQuestProgress progress = snapshot.quests();
 
         if (!progress.addObjectiveProgress(TEST_QUEST, objectiveId, amount)) return failure(source, "Objective progress could not be updated.");
-
-        data.storePlayerQuestProgress(progress);
+        if (!data.tryStorePlayerQuestProgress(testPlayerId, snapshot.revision(), progress)) return failure(source, "Could not save objective progress. Player state changed.");
 
         return success(source, "Objective progress updated.");
     }
@@ -100,15 +105,17 @@ public final class QuestPersistenceTestCommand
     private static int complete(CommandSourceStack source) throws CommandSyntaxException
     {
         CampaignSavedData data = CampaignSavedData.get(source.getServer());
-        Optional<PlayerQuestProgress> result = data.getPlayerQuestProgress(getTestPlayerId(source));
+        UUID testPlayerId = getTestPlayerId(source);
 
-        if (result.isEmpty()) return failure(source, "Test quest not initialized.");
+        Optional<CampaignSavedData.PlayerSnapshot> snapshotResult = data.getPlayerSnapshot(testPlayerId);
 
-        PlayerQuestProgress progress = result.get();
+        if (snapshotResult.isEmpty() || snapshotResult.get().quests() == null) return failure(source, "Test quest not initialized.");
+
+        CampaignSavedData.PlayerSnapshot snapshot = snapshotResult.get();
+        PlayerQuestProgress progress = snapshot.quests();
 
         if (!progress.completeActiveQuest(TEST_QUEST)) return failure(source, "Main objective is not complete.");
-
-        data.storePlayerQuestProgress(progress);
+        if (!data.tryStorePlayerQuestProgress(testPlayerId, snapshot.revision(), progress)) return failure(source, "Could not save quest completion. Player state changed.");
 
         return success(source, "Test quest completed.");
     }
