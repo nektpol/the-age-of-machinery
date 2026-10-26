@@ -88,4 +88,30 @@ public class QuestProgress
     {
         return Map.copyOf(objectiveProgress);
     }
+
+    
+    public static QuestProgress restore(String questId, QuestState state, Map<String, Integer> savedProgress)
+    {
+        Objects.requireNonNull(state, "Quest state cannot be null.");
+        Objects.requireNonNull(savedProgress, "Saved objective progress cannot be null.");
+
+        if (state == QuestState.LOCKED) throw new IllegalArgumentException("Locked quests must not be stored in player progress.");
+
+        QuestProgress progress = new QuestProgress(questId);
+
+        for (Map.Entry<String, Integer> entry : savedProgress.entrySet())
+        {
+            String objectiveId = entry.getKey();
+            Integer amount = entry.getValue();
+
+            if (objectiveId == null || objectiveId.isBlank()) throw new IllegalArgumentException("Objective ID cannot be empty.");
+            if (amount == null || amount < 0) throw new IllegalArgumentException("Saved objective progress cannot be negative or null.");
+
+            progress.objectiveProgress.put(objectiveId, amount);
+        }
+
+        progress.state = state;
+        return progress;
+    }
+
 }

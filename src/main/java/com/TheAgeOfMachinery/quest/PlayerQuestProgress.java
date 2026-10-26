@@ -117,4 +117,33 @@ public class PlayerQuestProgress {
         return activeQuestId != null;
     }
 
+    
+    public static PlayerQuestProgress restore(UUID playerId, Map<String, QuestProgress> savedQuests)
+    {
+        Objects.requireNonNull(savedQuests, "Saved quests cannot be null.");
+
+        PlayerQuestProgress playerProgress = new PlayerQuestProgress(playerId);
+
+        for (Map.Entry<String, QuestProgress> entry : savedQuests.entrySet())
+        {
+            String questId = entry.getKey();
+            QuestProgress progress = Objects.requireNonNull(entry.getValue(), "Saved quest progress cannot be null.");
+
+            if (!progress.getQuestId().equals(questId)) throw new IllegalArgumentException("Quest ID does not match saved progress.");
+            if (progress.getState() == QuestState.LOCKED) throw new IllegalArgumentException("Locked quests must not exist in saved progress.");
+
+            if (progress.getState() == QuestState.ACTIVE)
+            {
+                if (playerProgress.activeQuestId != null) throw new IllegalArgumentException("Player cannot have multiple active quests.");
+
+                playerProgress.activeQuestId = questId;
+            }
+
+            playerProgress.quests.put(questId, progress);
+        }
+
+        return playerProgress;
+    }
+
+
 }
