@@ -8,6 +8,7 @@ import com.TheAgeOfMachinery.reward.RewardClaimResult;
 import com.TheAgeOfMachinery.reward.RewardDefinition;
 import com.TheAgeOfMachinery.reward.RewardEntry;
 import com.TheAgeOfMachinery.reward.RewardManager;
+import com.TheAgeOfMachinery.persistence.CampaignSavedData;
 
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 
@@ -28,7 +29,7 @@ public class RewardClaimTestCommand
 {
     private static final String TEST_QUEST_ID = "debug:reward_claim_test";
 
-    private static RewardManager rewardManager = new RewardManager();
+    private static RewardManager rewardManager = new RewardManager(new CampaignSavedData());
 
     public static void register(RegisterCommandsEvent event)
     {
@@ -47,7 +48,7 @@ public class RewardClaimTestCommand
 
     public static void reset(ServerStoppedEvent event)
     {
-        rewardManager = new RewardManager();
+        rewardManager = new RewardManager(new CampaignSavedData());
     }
 
     private static int unlock(CommandSourceStack source) throws CommandSyntaxException
