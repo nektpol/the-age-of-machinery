@@ -8,6 +8,7 @@ import net.neoforged.fml.common.Mod;
 import org.slf4j.Logger;
 
 import com.TheAgeOfMachinery.command.RewardTestCommand;
+import com.TheAgeOfMachinery.command.RewardClaimTestCommand;
 import net.neoforged.neoforge.common.NeoForge;
 
 @Mod(TheAgeofMachinery.MODID)
@@ -21,6 +22,8 @@ public class TheAgeofMachinery
     {
         LOGGER.info("The Age of Machinery initialized.");
         NeoForge.EVENT_BUS.addListener(RewardTestCommand::register);
+        NeoForge.EVENT_BUS.addListener(RewardClaimTestCommand::register);
+        NeoForge.EVENT_BUS.addListener(RewardClaimTestCommand::reset);
     }
 }
 
