@@ -4,7 +4,6 @@ package com.TheAgeOfMachinery.command;
 import com.TheAgeOfMachinery.integration.MinecraftRewardDelivery;
 import com.TheAgeOfMachinery.reward.ExperienceReward;
 import com.TheAgeOfMachinery.reward.ItemReward;
-import com.TheAgeOfMachinery.reward.PlayerRewardInventory;
 import com.TheAgeOfMachinery.reward.RewardClaimResult;
 import com.TheAgeOfMachinery.reward.RewardDefinition;
 import com.TheAgeOfMachinery.reward.RewardEntry;
@@ -22,6 +21,8 @@ import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+
+import javax.annotation.Nonnull;
 
 public class RewardClaimTestCommand
 {
@@ -98,7 +99,7 @@ public class RewardClaimTestCommand
         return 1;
     }
 
-    private static int success(CommandSourceStack source, String text)
+    private static int success(CommandSourceStack source,@Nonnull  String text)
     {
         Component message = Objects.requireNonNull(Component.literal(text), "Success message cannot be null.");
 
@@ -106,7 +107,7 @@ public class RewardClaimTestCommand
         return 1;
     }
 
-    private static int failure(CommandSourceStack source, String text)
+    private static int failure(CommandSourceStack source, @Nonnull String text)
     {
         Component message = Objects.requireNonNull(Component.literal(text), "Failure message cannot be null.");
 
