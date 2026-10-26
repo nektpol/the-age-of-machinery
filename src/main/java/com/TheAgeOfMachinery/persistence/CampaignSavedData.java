@@ -2,6 +2,8 @@ package com.TheAgeOfMachinery.persistence;
 
 import com.TheAgeOfMachinery.quest.PlayerQuestProgress;
 import com.TheAgeOfMachinery.reward.PlayerRewardInventory;
+import com.TheAgeOfMachinery.reward.RewardClaimResult;
+import com.TheAgeOfMachinery.reward.RewardDelivery;
 
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
@@ -13,9 +15,11 @@ import net.minecraft.world.level.saveddata.SavedData;
 import javax.annotation.Nonnull;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 public class CampaignSavedData extends SavedData
@@ -39,6 +43,7 @@ public class CampaignSavedData extends SavedData
 
     private int testValue = 0;
     private final Map<UUID, PlayerState> players = new HashMap<>();
+    private final Set<UUID> claimsInProgress = new HashSet<>();
 
     public static CampaignSavedData get(MinecraftServer server)
     {
@@ -180,6 +185,7 @@ public class CampaignSavedData extends SavedData
         PlayerRewardInventory rewards = existing == null ? null : existing.rewards();
         long revision = existing == null ? 1 : existing.revision() + 1;
 
+        if (claimsInProgress.contains(playerId)) throw new IllegalStateException("Cannot replace player state during reward delivery.");
         players.put(playerId, new PlayerState(copyQuests(progress), rewards, revision));
         setDirty();
     }
@@ -205,6 +211,7 @@ public class CampaignSavedData extends SavedData
         PlayerQuestProgress quests = existing == null ? null : existing.quests();
         long revision = existing == null ? 1 : existing.revision() + 1;
 
+        if (claimsInProgress.contains(playerId)) throw new IllegalStateException("Cannot replace player state during reward delivery.");
         players.put(playerId, new PlayerState(quests, copyRewards(inventory), revision));
         setDirty();
     }
@@ -218,6 +225,7 @@ public class CampaignSavedData extends SavedData
         if (!playerId.equals(updatedQuests.getPlayerId())) throw new IllegalArgumentException("Updated quests belong to another player.");
         if (!playerId.equals(updatedRewards.getPlayerId())) throw new IllegalArgumentException("Updated rewards belong to another player.");
 
+        if (claimsInProgress.contains(playerId)) return false;
         PlayerState current = players.get(playerId);
 
         if (current == null) return false;
@@ -247,6 +255,7 @@ public class CampaignSavedData extends SavedData
     public boolean tryStorePlayerQuestProgress(UUID playerId, long expectedRevision, PlayerQuestProgress progress)
     {
         Objects.requireNonNull(playerId, "Player ID cannot be null.");
+        if (claimsInProgress.contains(playerId)) return false;
         Objects.requireNonNull(progress, "Player progress cannot be null.");
 
         if (!playerId.equals(progress.getPlayerId())) throw new IllegalArgumentException("Quest progress belongs to another player.");
@@ -265,6 +274,61 @@ public class CampaignSavedData extends SavedData
         setDirty();
 
         return true;
+    }
+
+    public boolean tryStorePlayerRewardInventory(UUID playerId, long expectedRevision, PlayerRewardInventory inventory)
+    {
+        Objects.requireNonNull(playerId, "Player ID cannot be null.");
+        Objects.requireNonNull(inventory, "Reward inventory cannot be null.");
+
+        if (!playerId.equals(inventory.getPlayerId())) throw new IllegalArgumentException("Reward inventory belongs to another player.");
+        if (expectedRevision < -1) throw new IllegalArgumentException("Invalid expected revision.");
+        if (claimsInProgress.contains(playerId)) return false;
+
+        PlayerState current = players.get(playerId);
+
+        if (current == null && expectedRevision != -1) return false;
+        if (current != null && current.revision() != expectedRevision) return false;
+
+        PlayerRewardInventory committedRewards = copyRewards(inventory);
+        PlayerQuestProgress quests = current == null ? null : current.quests();
+        long nextRevision = current == null ? 1 : current.revision() + 1;
+
+        players.put(playerId, new PlayerState(quests, committedRewards, nextRevision));
+        setDirty();
+
+        return true;
+    }
+
+    public RewardClaimResult executeRewardClaim(UUID playerId, String questId, String rewardId, RewardDelivery delivery)
+    {
+        Objects.requireNonNull(playerId, "Player ID cannot be null.");
+        Objects.requireNonNull(questId, "Quest ID cannot be null.");
+        Objects.requireNonNull(rewardId, "Reward ID cannot be null.");
+        Objects.requireNonNull(delivery, "Reward delivery cannot be null.");
+
+        if (!claimsInProgress.add(playerId)) return RewardClaimResult.CLAIM_IN_PROGRESS;
+
+        try
+        {
+            PlayerState current = players.get(playerId);
+
+            if (current == null || current.rewards() == null) return RewardClaimResult.NOT_FOUND;
+
+            RewardClaimResult result = current.rewards().claimReward(questId, rewardId, delivery);
+
+            if (result == RewardClaimResult.SUCCESS)
+            {
+                players.put(playerId, new PlayerState(current.quests(), current.rewards(), current.revision() + 1));
+                setDirty();
+            }
+
+            return result;
+        }
+        finally
+        {
+            claimsInProgress.remove(playerId);
+        }
     }
 
 }

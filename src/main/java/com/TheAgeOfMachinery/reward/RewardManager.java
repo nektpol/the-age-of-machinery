@@ -1,3 +1,4 @@
+
 package com.TheAgeOfMachinery.reward;
 
 import com.TheAgeOfMachinery.persistence.CampaignSavedData;
@@ -19,53 +20,37 @@ public class RewardManager
 
     public boolean unlockQuestRewards(UUID playerId, String questId, List<RewardDefinition> rewards)
     {
-        PlayerRewardInventory inventory = getOrCreateInventory(playerId);
+        Objects.requireNonNull(playerId, "Player ID cannot be null.");
+
+        Optional<CampaignSavedData.PlayerSnapshot> snapshotResult = savedData.getPlayerSnapshot(playerId);
+
+        PlayerRewardInventory inventory = snapshotResult.isPresent() && snapshotResult.get().rewards() != null
+            ? snapshotResult.get().rewards()
+            : new PlayerRewardInventory(playerId);
 
         if (!inventory.unlockRewards(questId, rewards)) return false;
 
-        savedData.storePlayerRewardInventory(inventory);
-        return true;
+        long expectedRevision = snapshotResult.isPresent() ? snapshotResult.get().revision() : -1L;
+
+        return savedData.tryStorePlayerRewardInventory(playerId, expectedRevision, inventory);
     }
 
     public RewardClaimResult claimReward(UUID playerId, String questId, String rewardId, RewardDelivery delivery)
     {
-        PlayerRewardInventory inventory = getOrCreateInventory(playerId);
-
-        RewardClaimResult result = inventory.claimReward(questId, rewardId, delivery);
-
-        if (result == RewardClaimResult.SUCCESS)
-        {
-            savedData.storePlayerRewardInventory(inventory);
-        }
-
-        return result;
+        return savedData.executeRewardClaim(playerId, questId, rewardId, delivery);
     }
 
     public Optional<RewardEntry> getReward(UUID playerId, String questId, String rewardId)
     {
-        PlayerRewardInventory inventory = getOrCreateInventory(playerId);
-
-        return inventory.getReward(questId, rewardId);
+        return savedData.getPlayerRewardInventory(playerId).flatMap(inventory -> inventory.getReward(questId, rewardId));
     }
 
     public Map<String, List<RewardEntry>> getPlayerRewardsSnapshot(UUID playerId)
     {
-        PlayerRewardInventory inventory = getOrCreateInventory(playerId);
+        Optional<PlayerRewardInventory> inventory = savedData.getPlayerRewardInventory(playerId);
 
-        return inventory.getRewardGroupsSnapshot();
-    }
+        if (inventory.isEmpty()) return Map.of();
 
-    private PlayerRewardInventory getOrCreateInventory(UUID playerId)
-    {
-        Objects.requireNonNull(playerId, "Player ID cannot be null.");
-
-        Optional<PlayerRewardInventory> existing = savedData.getPlayerRewardInventory(playerId);
-
-        if (existing.isPresent()) return existing.get();
-
-        PlayerRewardInventory inventory = new PlayerRewardInventory(playerId);
-        savedData.storePlayerRewardInventory(inventory);
-
-        return inventory;
+        return inventory.get().getRewardGroupsSnapshot();
     }
 }

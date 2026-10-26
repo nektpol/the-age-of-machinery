@@ -51,7 +51,7 @@ public class QuestManager
         }
 
         PlayerQuestProgress progress = new PlayerQuestProgress(playerId);
-        long expectedRevision = snapshotResult.map(CampaignSavedData.PlayerSnapshot::revision).orElse(-1L);
+        long expectedRevision = snapshotResult.isPresent() ? snapshotResult.get().revision() : -1L;
 
         if (savedData.tryStorePlayerQuestProgress(playerId, expectedRevision, progress)) return progress;
 
@@ -76,7 +76,7 @@ public class QuestManager
 
         if (!progress.activateQuest(firstQuest)) return false;
 
-        long expectedRevision = snapshotResult.map(CampaignSavedData.PlayerSnapshot::revision).orElse(-1L);
+        long expectedRevision = snapshotResult.isPresent() ? snapshotResult.get().revision() : -1L;
 
         return savedData.tryStorePlayerQuestProgress(playerId, expectedRevision, progress);
     }

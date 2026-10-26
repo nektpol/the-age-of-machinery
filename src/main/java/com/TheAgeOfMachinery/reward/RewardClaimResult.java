@@ -5,6 +5,8 @@ public enum RewardClaimResult
     SUCCESS,
     NOT_FOUND,
     ALREADY_CLAIMED,
-    DELIVERY_FAILED
+    DELIVERY_FAILED,
+    CLAIM_IN_PROGRESS
 }
+
 

@@ -77,7 +77,7 @@ public class PlayerRewardInventory
     }
 
     
-    RewardClaimResult claimReward(String questId, String rewardId, RewardDelivery delivery)
+    public RewardClaimResult claimReward(String questId, String rewardId, RewardDelivery delivery)
     {
         Objects.requireNonNull(delivery, "Reward delivery cannot be null.");
 
