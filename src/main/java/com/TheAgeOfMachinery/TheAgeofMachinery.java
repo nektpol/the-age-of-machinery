@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 
 import com.TheAgeOfMachinery.command.RewardTestCommand;
 import com.TheAgeOfMachinery.command.RewardClaimTestCommand;
+import com.TheAgeOfMachinery.command.SaveTestCommand;
 import net.neoforged.neoforge.common.NeoForge;
 
 @Mod(TheAgeofMachinery.MODID)
@@ -24,6 +25,7 @@ public class TheAgeofMachinery
         NeoForge.EVENT_BUS.addListener(RewardTestCommand::register);
         NeoForge.EVENT_BUS.addListener(RewardClaimTestCommand::register);
         NeoForge.EVENT_BUS.addListener(RewardClaimTestCommand::reset);
+        NeoForge.EVENT_BUS.addListener(SaveTestCommand::register);
     }
 }
 
