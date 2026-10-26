@@ -44,6 +44,7 @@ public final class CampaignRuntimeTestCommand
                 .then(Commands.literal("campaign").executes(context -> campaign(context.getSource())))
                 .then(Commands.literal("verify").executes(context -> verify(context.getSource())))
                 .then(Commands.literal("audit").executes(context -> audit(context.getSource())))
+                .then(Commands.literal("reloadstatus").executes(context -> reloadStatus(context.getSource())))
                 .then(Commands.literal("start").executes(context -> start(context.getSource())))
                 .then(Commands.literal("progress")
                     .then(Commands.argument("objectiveId", Objects.requireNonNull(StringArgumentType.word()))
@@ -299,4 +300,12 @@ public final class CampaignRuntimeTestCommand
 
         return 1;
     }
+    
+    private static int reloadStatus(CommandSourceStack source)
+    {
+        CampaignRuntime runtime = CampaignRuntime.get(source.getServer());
+
+        return success(source, Objects.requireNonNull(runtime.getLastReloadStatus(), "No reload status available."));
+    }
+
 }

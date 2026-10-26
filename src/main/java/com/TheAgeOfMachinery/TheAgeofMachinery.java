@@ -20,12 +20,14 @@ import com.TheAgeOfMachinery.command.CampaignFailureTestCommand;
 import com.TheAgeOfMachinery.command.CampaignRuntimeTestCommand;
 import com.TheAgeOfMachinery.command.CampaignJsonParserTestCommand;
 import com.TheAgeOfMachinery.command.CampaignRegistryTestCommand;
+import com.TheAgeOfMachinery.command.CampaignReloadTestCommand;
 
 import com.TheAgeOfMachinery.reward.RewardPersistenceTestCommand;
 
 import com.TheAgeOfMachinery.runtime.CampaignRuntime;
 import com.TheAgeOfMachinery.runtime.CampaignPlayerEvents;
 import com.TheAgeOfMachinery.runtime.CampaignCraftingEvents;
+import com.TheAgeOfMachinery.runtime.CampaignReloadEvents;
 import com.TheAgeOfMachinery.runtime.CampaignItemPickupEvents;
 
 import net.neoforged.neoforge.common.NeoForge;
@@ -55,6 +57,7 @@ public class TheAgeofMachinery
         NeoForge.EVENT_BUS.addListener(CampaignRuntimeTestCommand::register);
         NeoForge.EVENT_BUS.addListener(CampaignJsonParserTestCommand::register);
         NeoForge.EVENT_BUS.addListener(CampaignRegistryTestCommand::register);
+        NeoForge.EVENT_BUS.addListener(CampaignReloadTestCommand::register);
         
         NeoForge.EVENT_BUS.addListener(CampaignRuntime::onServerStarted);
         NeoForge.EVENT_BUS.addListener(CampaignRuntime::onServerStopped);
@@ -62,6 +65,7 @@ public class TheAgeofMachinery
 
         NeoForge.EVENT_BUS.addListener(CampaignCraftingEvents::onItemCrafted);
         NeoForge.EVENT_BUS.addListener(CampaignItemPickupEvents::onItemPickedUp);
+        NeoForge.EVENT_BUS.addListener(CampaignReloadEvents::onDatapackSync);
     }
 }
 

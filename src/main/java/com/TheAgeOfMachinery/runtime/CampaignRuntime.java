@@ -18,6 +18,7 @@ import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 
 import com.TheAgeOfMachinery.json.CampaignDataPackLoader;
+import com.TheAgeOfMachinery.json.CampaignReloadCompatibility;
 
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -33,9 +34,10 @@ public final class CampaignRuntime
     private final UUID sessionId = UUID.randomUUID();
     private final MinecraftServer server;
     private final CampaignSavedData savedData;
-    private final CampaignAdvancementService advancementService;
+    private CampaignAdvancementService advancementService;
     private final RewardManager rewardManager;
-    private final CampaignDefinition campaign;
+    private CampaignDefinition campaign;
+    private String lastReloadStatus = "No successful data-pack reload handled yet.";
 
     private CampaignRuntime(MinecraftServer server)
     {
@@ -191,4 +193,47 @@ public final class CampaignRuntime
     {
         return campaign.getQuestIds();
     }
+    
+    public static Optional<CampaignRuntime> findIfStarted(MinecraftServer server)
+    {
+        Objects.requireNonNull(server, "Minecraft server cannot be null.");
+
+        if (!server.isSameThread()) throw new IllegalStateException("Campaign runtime must be accessed on the server thread.");
+
+        return Optional.ofNullable(ACTIVE_RUNTIMES.get(server));
+    }
+
+    public void replaceCompatibleCampaign(CampaignDefinition candidate)
+    {
+        requireServerThread();
+        Objects.requireNonNull(candidate, "Reload candidate cannot be null.");
+
+        CampaignReloadCompatibility.requireCompatible(campaign, candidate);
+
+        CampaignAdvancementService replacementService = new CampaignAdvancementService(savedData);
+
+        for (QuestRewardDefinition definition : candidate.quests())
+        {
+            replacementService.registerQuest(definition);
+        }
+
+        advancementService = replacementService;
+        campaign = candidate;
+        lastReloadStatus = "APPLIED: Compatible presentation-only campaign reload.";
+    }
+
+    public void recordReloadFailure(String reason)
+    {
+        requireServerThread();
+
+        lastReloadStatus = "REJECTED: " + Objects.toString(reason, "Unknown reload failure");
+    }
+
+    public String getLastReloadStatus()
+    {
+        requireServerThread();
+
+        return lastReloadStatus;
+    }
+
 }

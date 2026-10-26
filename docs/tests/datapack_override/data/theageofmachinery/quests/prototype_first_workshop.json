@@ -1,0 +1,52 @@
+{
+  "formatVersion": 1,
+  "id": "theageofmachinery:prototype_first_workshop",
+  "title": "The First Workshop [Datapack Override]",
+  "description": "Gather the materials needed to establish your first workshop.",
+  "objectives": [
+    {
+      "id": "gather_cobblestone",
+      "description": "Obtain 16 Cobblestone",
+      "requiredAmount": 16,
+      "optional": false,
+      "trigger": {
+        "type": "PICKUP_ITEM",
+        "item": "minecraft:cobblestone"
+      }
+    },
+    {
+      "id": "gather_logs",
+      "description": "Obtain 8 Oak Logs",
+      "requiredAmount": 8,
+      "optional": true,
+      "trigger": {
+        "type": "PICKUP_ITEM",
+        "item": "minecraft:oak_log"
+      }
+    }
+  ],
+  "rewards": {
+    "main": [
+      {
+        "id": "main_xp",
+        "type": "EXPERIENCE",
+        "amount": 25
+      },
+      {
+        "id": "main_iron",
+        "type": "ITEM",
+        "item": "minecraft:iron_ingot",
+        "amount": 2
+      }
+    ],
+    "optional": {
+      "gather_logs": [
+        {
+          "id": "optional_xp",
+          "type": "EXPERIENCE",
+          "amount": 10
+        }
+      ]
+    }
+  }
+}
