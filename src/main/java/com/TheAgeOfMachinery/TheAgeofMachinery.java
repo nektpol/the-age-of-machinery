@@ -7,14 +7,20 @@ import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import org.slf4j.Logger;
 
+import com.TheAgeOfMachinery.command.RewardTestCommand;
+import net.neoforged.neoforge.common.NeoForge;
+
 @Mod(TheAgeofMachinery.MODID)
-public class TheAgeofMachinery {
+public class TheAgeofMachinery 
+{
 
     public static final String MODID = "theageofmachinery";
     public static final Logger LOGGER = LogUtils.getLogger();
 
-    public TheAgeofMachinery(IEventBus modEventBus, ModContainer modContainer) {
+    public TheAgeofMachinery(IEventBus modEventBus, ModContainer modContainer) 
+    {
         LOGGER.info("The Age of Machinery initialized.");
+        NeoForge.EVENT_BUS.addListener(RewardTestCommand::register);
     }
 }
 
