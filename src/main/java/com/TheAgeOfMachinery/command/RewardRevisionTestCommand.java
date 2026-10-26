@@ -23,6 +23,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
+import javax.annotation.Nonnull;
+
 public final class RewardRevisionTestCommand
 {
     private static final String QUEST_ID = "theageofmachinery:debug_reward_revision";
@@ -194,7 +196,7 @@ public final class RewardRevisionTestCommand
         return 1;
     }
 
-    private static int success(CommandSourceStack source, String text)
+    private static int success(CommandSourceStack source, @Nonnull String text)
     {
         Component message = Objects.requireNonNull(Component.literal(text), "Success message cannot be null.");
 
@@ -202,7 +204,7 @@ public final class RewardRevisionTestCommand
         return 1;
     }
 
-    private static int failure(CommandSourceStack source, String text)
+    private static int failure(CommandSourceStack source, @Nonnull String text)
     {
         Component message = Objects.requireNonNull(Component.literal(text), "Failure message cannot be null.");
 
