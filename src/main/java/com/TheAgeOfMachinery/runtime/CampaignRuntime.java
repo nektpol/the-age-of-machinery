@@ -17,6 +17,8 @@ import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 
+import com.TheAgeOfMachinery.json.CampaignDataPackLoader;
+
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,12 +40,11 @@ public final class CampaignRuntime
     private CampaignRuntime(MinecraftServer server)
     {
         this.server = Objects.requireNonNull(server, "Minecraft server cannot be null.");
-        savedData = CampaignSavedData.get(server);
+        campaign = CampaignDataPackLoader.load(server.getResourceManager());
 
+        savedData = CampaignSavedData.get(server);
         advancementService = new CampaignAdvancementService(savedData);
         rewardManager = new RewardManager(savedData);
-
-        campaign = BuiltInCampaign.create();
 
         for (QuestRewardDefinition definition : campaign.quests())
         {
