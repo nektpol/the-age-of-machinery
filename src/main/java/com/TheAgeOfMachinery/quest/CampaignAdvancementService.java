@@ -1,9 +1,11 @@
-
 package com.TheAgeOfMachinery.quest;
 
+import com.TheAgeOfMachinery.persistence.CampaignSavedData;
+import com.TheAgeOfMachinery.persistence.PlayerQuestProgressCodec;
+import com.TheAgeOfMachinery.persistence.PlayerRewardInventoryCodec;
+import com.TheAgeOfMachinery.reward.PlayerRewardInventory;
 import com.TheAgeOfMachinery.reward.QuestRewardDefinition;
 import com.TheAgeOfMachinery.reward.RewardDefinition;
-import com.TheAgeOfMachinery.reward.RewardManager;
 
 import java.util.HashMap;
 import java.util.List;
@@ -14,14 +16,14 @@ import java.util.UUID;
 
 public class CampaignAdvancementService
 {
+    private final CampaignSavedData savedData;
     private final QuestManager questManager;
-    private final RewardManager rewardManager;
     private final Map<String, QuestRewardDefinition> questRewards = new HashMap<>();
 
-    public CampaignAdvancementService(QuestManager questManager, RewardManager rewardManager)
+    public CampaignAdvancementService(CampaignSavedData savedData)
     {
-        this.questManager = Objects.requireNonNull(questManager, "Quest manager cannot be null.");
-        this.rewardManager = Objects.requireNonNull(rewardManager, "Reward manager cannot be null.");
+        this.savedData = Objects.requireNonNull(savedData, "Campaign saved data cannot be null.");
+        this.questManager = new QuestManager(savedData);
     }
 
     public void registerQuest(QuestRewardDefinition definition)
@@ -47,67 +49,79 @@ public class CampaignAdvancementService
     {
         Objects.requireNonNull(playerId, "Player ID cannot be null.");
 
-        Optional<QuestDefinition> activeQuestResult = questManager.getActiveQuestDefinition(playerId);
+        Optional<PlayerQuestProgress> playerResult = savedData.getPlayerQuestProgress(playerId);
 
-        if (activeQuestResult.isEmpty()) return CampaignAdvancementResult.NO_ACTIVE_QUEST;
+        if (playerResult.isEmpty()) return CampaignAdvancementResult.NO_ACTIVE_QUEST;
 
-        QuestDefinition activeQuest = activeQuestResult.get();
-        String questId = activeQuest.id();
+        PlayerQuestProgress originalQuests = playerResult.get();
 
-        if (!questManager.canAdvanceQuest(playerId)) return CampaignAdvancementResult.MAIN_OBJECTIVES_INCOMPLETE;
+        if (!originalQuests.hasActiveQuest()) return CampaignAdvancementResult.NO_ACTIVE_QUEST;
 
+        Optional<QuestProgress> activeProgressResult = originalQuests.getActiveQuestProgress();
+
+        if (activeProgressResult.isEmpty()) return CampaignAdvancementResult.INVALID_CAMPAIGN_STATE;
+
+        QuestProgress activeProgress = activeProgressResult.get();
+        String questId = activeProgress.getQuestId();
+
+        Optional<QuestDefinition> definitionResult = questManager.getQuestDefinition(questId);
+
+        if (definitionResult.isEmpty()) return CampaignAdvancementResult.INVALID_CAMPAIGN_STATE;
+
+        QuestDefinition activeQuest = definitionResult.get();
         QuestRewardDefinition rewardConfiguration = questRewards.get(questId);
 
-        if (rewardConfiguration == null) throw new IllegalStateException("Missing reward configuration for quest: " + questId);
+        if (rewardConfiguration == null) return CampaignAdvancementResult.INVALID_CAMPAIGN_STATE;
 
-        PlayerQuestProgress playerProgress = questManager.getOrCreatePlayerProgress(playerId);
-        Optional<QuestProgress> progressResult = playerProgress.getActiveQuestProgress();
+        if (!originalQuests.canAdvanceActiveQuest(activeQuest)) return CampaignAdvancementResult.MAIN_OBJECTIVES_INCOMPLETE;
 
-        if (progressResult.isEmpty()) return CampaignAdvancementResult.INVALID_CAMPAIGN_STATE;
+        PlayerRewardInventory originalRewards = savedData.getPlayerRewardInventory(playerId).orElse(null);
 
-        QuestProgress questProgress = progressResult.get();
-
-        if (rewardManager.getPlayerRewardsSnapshot(playerId).containsKey(questId))
+        if (originalRewards != null && originalRewards.hasUnlockedRewardsFromQuest(questId))
         {
             return CampaignAdvancementResult.REWARDS_ALREADY_UNLOCKED;
         }
 
         Optional<QuestDefinition> nextQuestResult = questManager.getNextQuestDefinition(questId);
 
-        if (nextQuestResult.isPresent())
+        if (nextQuestResult.isPresent() && originalQuests.getQuestProgress(nextQuestResult.get().id()).isPresent())
         {
-            String nextQuestId = nextQuestResult.get().id();
-
-            if (playerProgress.getQuestProgress(nextQuestId).isPresent())
-            {
-                return CampaignAdvancementResult.INVALID_CAMPAIGN_STATE;
-            }
+            return CampaignAdvancementResult.INVALID_CAMPAIGN_STATE;
         }
 
-        // Determine the rewards before changing the current quest state.
-        List<RewardDefinition> earnedRewards = rewardConfiguration.calculateEarnedRewards(questProgress);
+        // Phase 1: Calculate the rewards without modifying persistent player data.
+        List<RewardDefinition> earnedRewards = rewardConfiguration.calculateEarnedRewards(activeProgress);
 
-        // Unlock the complete reward group before finalizing the quest.
-        if (!rewardManager.unlockQuestRewards(playerId, questId, earnedRewards))
+        // Phase 2: Create independent copies of the player's current state.
+        PlayerQuestProgress stagedQuests = PlayerQuestProgressCodec.read(PlayerQuestProgressCodec.write(originalQuests));
+
+        PlayerRewardInventory stagedRewards = originalRewards == null
+            ? new PlayerRewardInventory(playerId)
+            : PlayerRewardInventoryCodec.read(PlayerRewardInventoryCodec.write(originalRewards));
+
+        // Phase 3: Apply every advancement operation to the staged objects.
+        if (!stagedRewards.unlockRewards(questId, earnedRewards))
         {
             return CampaignAdvancementResult.REWARDS_ALREADY_UNLOCKED;
         }
 
-        // These operations were validated above. Unexpected failures indicate an inconsistent state.
-        if (!questManager.completeActiveQuest(playerId))
+        if (!stagedQuests.completeActiveQuest(activeQuest))
         {
-            throw new IllegalStateException("Quest completion failed after rewards were unlocked: " + questId);
+            return CampaignAdvancementResult.INVALID_CAMPAIGN_STATE;
         }
 
-        if (nextQuestResult.isPresent())
+        if (nextQuestResult.isPresent() && !stagedQuests.activateQuest(nextQuestResult.get()))
         {
-            if (!questManager.activateNextQuest(playerId, questId))
-            {
-                throw new IllegalStateException("Next quest activation failed after completing: " + questId);
-            }
-
-            return CampaignAdvancementResult.NEXT_QUEST_STARTED;
+            return CampaignAdvancementResult.INVALID_CAMPAIGN_STATE;
         }
+
+        // Phase 4: Replace the original quest and reward state together.
+        if (!savedData.commitAdvancement(playerId, originalQuests, originalRewards, stagedQuests, stagedRewards))
+        {
+            return CampaignAdvancementResult.INVALID_CAMPAIGN_STATE;
+        }
+
+        if (nextQuestResult.isPresent()) return CampaignAdvancementResult.NEXT_QUEST_STARTED;
 
         return CampaignAdvancementResult.CAMPAIGN_COMPLETED;
     }

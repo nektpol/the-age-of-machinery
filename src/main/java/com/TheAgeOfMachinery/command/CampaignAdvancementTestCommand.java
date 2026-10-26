@@ -88,6 +88,7 @@ public final class CampaignAdvancementTestCommand
                 .requires(source -> source.hasPermission(2))
                 .then(createScenarioCommands("basic"))
                 .then(createScenarioCommands("bonus"))
+                .then(createScenarioCommands("staged"))
         );
     }
 
@@ -105,11 +106,10 @@ public final class CampaignAdvancementTestCommand
                 .then(Commands.literal("bonus").executes(context -> claim(context.getSource(), scenario, "bonus_xp")))
             );
 
-        if (scenario.equals("bonus"))
+        if (scenario.equals("bonus") || scenario.equals("staged"))
         {
             commands.then(Commands.literal("optional").executes(context -> addProgress(context.getSource(), scenario, OPTIONAL_ID)));
         }
-
         return commands;
     }
 
@@ -132,10 +132,7 @@ public final class CampaignAdvancementTestCommand
 
     private static CampaignAdvancementService createAdvancementService(CampaignSavedData data)
     {
-        QuestManager questManager = new QuestManager(data);
-        RewardManager rewardManager = new RewardManager(data);
-
-        CampaignAdvancementService service = new CampaignAdvancementService(questManager, rewardManager);
+        CampaignAdvancementService service = new CampaignAdvancementService(data);
         service.registerQuest(FIRST_REWARDS);
         service.registerQuest(SECOND_REWARDS);
 
