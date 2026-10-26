@@ -29,10 +29,12 @@ public class CampaignSavedData extends SavedData
 
     private static final int FORMAT_VERSION = 3;
 
-    private int testValue = 0;
+    private record PlayerState(PlayerQuestProgress quests, PlayerRewardInventory rewards)
+    {
+    }
 
-    private final Map<UUID, PlayerQuestProgress> playerQuests = new HashMap<>();
-    private final Map<UUID, PlayerRewardInventory> playerRewards = new HashMap<>();
+    private int testValue = 0;
+    private final Map<UUID, PlayerState> players = new HashMap<>();
 
     public static CampaignSavedData get(MinecraftServer server)
     {
@@ -55,7 +57,6 @@ public class CampaignSavedData extends SavedData
 
         data.testValue = tag.getInt(TAG_TEST_VALUE);
 
-        // Version 2 introduced player quest progression.
         if (version >= 2)
         {
             if (!tag.contains(TAG_PLAYERS, Tag.TAG_LIST)) throw new IllegalArgumentException("Saved player list is missing.");
@@ -67,14 +68,17 @@ public class CampaignSavedData extends SavedData
                 CompoundTag playerTag = playersTag.getCompound(index);
                 PlayerQuestProgress progress = PlayerQuestProgressCodec.read(playerTag);
 
-                if (data.playerQuests.putIfAbsent(progress.getPlayerId(), progress) != null)
-                {
-                    throw new IllegalArgumentException("Duplicate saved player UUID: " + progress.getPlayerId());
-                }
+                UUID playerId = progress.getPlayerId();
+                PlayerState existing = data.players.get(playerId);
+
+                if (existing != null && existing.quests() != null) throw new IllegalArgumentException("Duplicate saved player UUID: " + playerId);
+
+                PlayerRewardInventory rewards = existing == null ? null : existing.rewards();
+
+                data.players.put(playerId, new PlayerState(progress, rewards));
             }
         }
 
-        // Version 3 introduced player reward inventories.
         if (version >= 3)
         {
             if (!tag.contains(TAG_REWARD_INVENTORIES, Tag.TAG_LIST)) throw new IllegalArgumentException("Saved reward inventories list is missing.");
@@ -86,10 +90,14 @@ public class CampaignSavedData extends SavedData
                 CompoundTag inventoryTag = inventoriesTag.getCompound(index);
                 PlayerRewardInventory inventory = PlayerRewardInventoryCodec.read(inventoryTag);
 
-                if (data.playerRewards.putIfAbsent(inventory.getPlayerId(), inventory) != null)
-                {
-                    throw new IllegalArgumentException("Duplicate saved reward inventory UUID: " + inventory.getPlayerId());
-                }
+                UUID playerId = inventory.getPlayerId();
+                PlayerState existing = data.players.get(playerId);
+
+                if (existing != null && existing.rewards() != null) throw new IllegalArgumentException("Duplicate saved reward inventory UUID: " + playerId);
+
+                PlayerQuestProgress quests = existing == null ? null : existing.quests();
+
+                data.players.put(playerId, new PlayerState(quests, inventory));
             }
         }
 
@@ -102,26 +110,25 @@ public class CampaignSavedData extends SavedData
         tag.putInt(TAG_VERSION, FORMAT_VERSION);
         tag.putInt(TAG_TEST_VALUE, testValue);
 
-        // Save player quest progress.
         ListTag playersTag = new ListTag();
+        ListTag inventoriesTag = new ListTag();
 
-        for (PlayerQuestProgress progress : playerQuests.values())
+        for (PlayerState state : players.values())
         {
-            CompoundTag playerTag = PlayerQuestProgressCodec.write(progress);
-            playersTag.add(playerTag);
+            if (state.quests() != null)
+            {
+                CompoundTag playerTag = PlayerQuestProgressCodec.write(state.quests());
+                playersTag.add(playerTag);
+            }
+
+            if (state.rewards() != null)
+            {
+                CompoundTag inventoryTag = PlayerRewardInventoryCodec.write(state.rewards());
+                inventoriesTag.add(inventoryTag);
+            }
         }
 
         tag.put(TAG_PLAYERS, playersTag);
-
-        // Save player reward inventories.
-        ListTag inventoriesTag = new ListTag();
-
-        for (PlayerRewardInventory inventory : playerRewards.values())
-        {
-            CompoundTag inventoryTag = PlayerRewardInventoryCodec.write(inventory);
-            inventoriesTag.add(inventoryTag);
-        }
-
         tag.put(TAG_REWARD_INVENTORIES, inventoriesTag);
 
         return tag;
@@ -131,14 +138,23 @@ public class CampaignSavedData extends SavedData
     {
         Objects.requireNonNull(playerId, "Player ID cannot be null.");
 
-        return Optional.ofNullable(playerQuests.get(playerId));
+        PlayerState state = players.get(playerId);
+
+        if (state == null) return Optional.empty();
+
+        return Optional.ofNullable(state.quests());
     }
 
     public void storePlayerQuestProgress(PlayerQuestProgress progress)
     {
         Objects.requireNonNull(progress, "Player progress cannot be null.");
 
-        playerQuests.put(progress.getPlayerId(), progress);
+        UUID playerId = progress.getPlayerId();
+        PlayerState existing = players.get(playerId);
+
+        PlayerRewardInventory rewards = existing == null ? null : existing.rewards();
+
+        players.put(playerId, new PlayerState(progress, rewards));
         setDirty();
     }
 
@@ -146,15 +162,46 @@ public class CampaignSavedData extends SavedData
     {
         Objects.requireNonNull(playerId, "Player ID cannot be null.");
 
-        return Optional.ofNullable(playerRewards.get(playerId));
+        PlayerState state = players.get(playerId);
+
+        if (state == null) return Optional.empty();
+
+        return Optional.ofNullable(state.rewards());
     }
 
     public void storePlayerRewardInventory(PlayerRewardInventory inventory)
     {
         Objects.requireNonNull(inventory, "Reward inventory cannot be null.");
 
-        playerRewards.put(inventory.getPlayerId(), inventory);
+        UUID playerId = inventory.getPlayerId();
+        PlayerState existing = players.get(playerId);
+
+        PlayerQuestProgress quests = existing == null ? null : existing.quests();
+
+        players.put(playerId, new PlayerState(quests, inventory));
         setDirty();
+    }
+
+    public boolean commitAdvancement(UUID playerId, PlayerQuestProgress expectedQuests, PlayerRewardInventory expectedRewards, PlayerQuestProgress updatedQuests, PlayerRewardInventory updatedRewards)
+    {
+        Objects.requireNonNull(playerId, "Player ID cannot be null.");
+        Objects.requireNonNull(expectedQuests, "Expected quest progress cannot be null.");
+        Objects.requireNonNull(updatedQuests, "Updated quest progress cannot be null.");
+        Objects.requireNonNull(updatedRewards, "Updated reward inventory cannot be null.");
+
+        if (!playerId.equals(updatedQuests.getPlayerId())) throw new IllegalArgumentException("Updated quests belong to another player.");
+        if (!playerId.equals(updatedRewards.getPlayerId())) throw new IllegalArgumentException("Updated rewards belong to another player.");
+
+        PlayerState current = players.get(playerId);
+
+        if (current == null) return false;
+        if (current.quests() != expectedQuests) return false;
+        if (current.rewards() != expectedRewards) return false;
+
+        players.put(playerId, new PlayerState(updatedQuests, updatedRewards));
+        setDirty();
+
+        return true;
     }
 
     public int getTestValue()
