@@ -2,150 +2,201 @@
 
 *A spoiler-conscious, Create-focused quest and progression mod for Minecraft Java Edition 1.21.1 (NeoForge).*
 
-> **Development checkpoint — 26 October 2026 · Milestone 2.12.4.** The **server-side two-quest prototype now responds to real Minecraft gameplay**: picking up Cobblestone/Oak Logs and crafting a Crafting Table/Furnace can advance active objectives automatically. Player login initializes the first quest, advancement remains manual, earned rewards unlock after finalization, and reward claims and progress persist across normal world restarts. **Create-specific functionality, JSON/data-pack campaign loading, networking, the Quest Journal and the final campaign are still planned.** Two-player multiplayer verification is **pending**, because a second account was unavailable.
+> **Development checkpoint — 27 October 2026 · Milestone 2.14 planned; 2.13.6 last completed.** The developer reports successful builds and commits through **2.13.6**. The mod now loads server-side quest definitions from Minecraft data packs, validates them, supports compatible presentation-only `/reload` changes, and uses real crafting and ground-item pickups to progress the prototype campaign. **Create-specific engineering objectives, the player-facing Quest Journal, networking and public release hardening are not implemented.** Create 6.0.10 (Minecraft 1.21.1/NeoForge) is the verified official integration target; Gradle dependency setup is the next task, **not yet a verified build**. A two-player test is still **pending / not performed**.
+>
+> **Observed follow-ups:** A test pack setting `requiredAmount` to `0` caused a game failure without a useful visible explanation; the exact exception and whether it occurred on startup or reload have not been established. In addition, each matching item pickup currently emits a quest-progress chat/system message. Both are tracked in [`docs/FUTURE_CORRECTIONS.md`](docs/FUTURE_CORRECTIONS.md) as **I-011** and **I-012**.
 
-## What this mod is intended to do
+## Project vision and gameplay rules
 
-The Age of Machinery guides players through a discovery-oriented progression of **Create** engineering challenges in Minecraft. It is a quest experience designed for the Create/Create+ ecosystem, not a general-purpose quest engine.
+The Age of Machinery is intended to guide players through a discovery-oriented Create/Create+ engineering campaign rather than generic grinding. The current quests are **vanilla Minecraft prototypes**, not the final engineering campaign.
 
-- **One active quest per player**, with mandatory and optional objectives and completed history.
-- **Manual advancement:** satisfying mandatory objectives enables advancement but does not trigger it. Optional objectives remain available until the player advances.
-- **No spoilers:** future quests and the current quest's rewards are not revealed during ordinary play. Only actually *earned* rewards are revealed after finalization.
-- **Independent persistent reward claims:** each earned reward can be claimed independently, but not partially; unclaimed rewards remain available after later quests and normal world restarts.
-- **Discovery support:** three progressively more specific hints are planned; a first-time crafting/building task must show a checklist of ingredients with quantities.
-- **Server-owned UUID progression:** designed for independent multiplayer progress, although simultaneous two-player behavior is not yet verified.
-- **Gameplay-driven objectives:** real Minecraft pickups and crafting are implemented for the prototype; Create engineering achievements are a future phase.
+- **Exactly one active quest per player.** Completed quests remain in history; future quests are not populated as active progress records.
+- **Mandatory and optional objectives.** Mandatory progress unlocks the right to **manually advance**; optional tasks remain available until advancement and may grant extra rewards.
+- **Spoiler-conscious progression.** Future quests and the current quest's rewards must not appear in ordinary player UI. Only earned rewards become discoverable after quest finalization. Operator diagnostic commands are not player-visible policy.
+- **Independent claims.** Earned XP/item rewards are claimable individually, without partial item delivery; unclaimed rewards survive quest transitions and ordinary world restarts.
+- **Ingredient checklists.** First-time crafting/building tasks should show required ingredient quantities. JSON stores this metadata; a player-facing checklist is not built yet.
+- **Server-authoritative progress.** Minecraft server events drive supported objective types. The client must never submit arbitrary progress amounts or another player's UUID.
+- **Three progressively more specific hints** are planned; the hint system does not yet exist.
 
-## Current implementation
+## Current functionality
 
-| Subsystem | Status after 2.12.4 |
+| Subsystem | Implementation at 2.13.6 |
 |---|---|
-| Quest/reward models, mandatory/optional objectives, per-player history | Implemented |
-| Individual XP/item claims and full-inventory all-or-nothing refusal | Implemented; in-game reward tests previously reported successful |
-| `CampaignSavedData` NBT persistence (`FormatVersion = 3`) | Implemented; normal world-restart tests reported successful |
-| Coordinated advancement, detached snapshots, revision checks, reentrant claim guards | Implemented; prior development/failure-injection tests reported successful |
-| Server-scoped `CampaignRuntime`, automatic player login initialization, player-bound API, server-thread checks | Implemented |
-| Ordered two-quest built-in prototype | Implemented; registered on server startup |
-| **Automatic crafting detection** | **Implemented:** `PlayerEvent.ItemCraftedEvent` on the server |
-| **Automatic ground-item pickup detection** | **Implemented:** `ItemEntityPickupEvent.Post`, using actual acquired quantity |
-| **Definition-driven objective routing** | **Implemented:** `ObjectiveTriggerType`, `ObjectiveTrigger` and `CampaignObjectiveRouter` for `CRAFT_ITEM`/`PICKUP_ITEM` |
-| Manual advancement and post-completion reward claims | Implemented via development commands; no player-facing GUI yet |
-| Two-player multiplayer isolation | **Pending — not tested** |
-| JSON/data-pack definitions and reload compatibility | **Not implemented — planned for 2.13** |
-| Create machinery, processing and engineering achievements | **Not implemented — planned for 2.14** |
-| Client synchronization, Quest Journal, hint/material/reward UI | **Not implemented — planned for 2.15** |
-| Crash-atomic XP/item delivery, adversarial networking tests, automated CI/GameTest suite | **Not established** |
+| Quest/reward models, active quest and optional tasks | Implemented; quest advancement is manual |
+| Per-player state and history | `CampaignSavedData` NBT `FormatVersion = 3`, UUID-owned, detached snapshots and revision checks |
+| Coordinated advancement/reward claims | Staged state commit, earned optional rewards frozen at advancement, individual claims and guarded delivery |
+| Minecraft delivery | XP/item rewards supported; full-inventory item claim refusal and retry previously tested |
+| Server runtime | One `CampaignRuntime` per Minecraft server, automatic new-player initialization, `ServerPlayer` identity checks and server-thread checks |
+| Gameplay detection | `PlayerEvent.ItemCraftedEvent` and `ItemEntityPickupEvent.Post` route active-quest item objectives |
+| Objective matching | `MANUAL`, `CRAFT_ITEM`, `PICKUP_ITEM` with registry item IDs through `CampaignObjectiveRouter` |
+| JSON quest definitions | **Implemented:** schema, strict parser, model conversion, ingredient entries, campaign manifest and whole-campaign assembly |
+| Data-pack activation | **Implemented:** active campaign loaded from server data packs on server startup; Java-built-in content is no longer the active source |
+| Live `/reload` | **Implemented for compatible text-only changes**; structural changes rejected during the current server session |
+| World-restart structural migration | **Not implemented:** existing saves do not have a verified persisted campaign-definition lock/migration policy |
+| Error diagnostics for invalid packs | **Needs improvement:** `requiredAmount: 0` caused a failure without a useful visible explanation (I-011) |
+| Quest progress notification | Temporary per-event chat/system messages; **must be replaced/gated** when journal UI is available (I-012) |
+| Create Maven/runtime dependency | **Next — 2.14.1:** official documented target 6.0.10, Maven 6.0.10-280; actual dev build and Create+ profile compatibility not yet verified |
+| Create machinery / automation events | Not implemented; planned for 2.14.2–2.14.7 |
+| Client protocol, journal, hint/ingredient/reward UI | Not implemented; planned for 2.15 |
+| Two-player simultaneous multiplayer verification | **Pending — cannot currently be tested with two accounts** |
+| Crash-atomic reward delivery and automated regression coverage | Not established; release-hardening issues remain open |
 
-**Verification scope:** The developer reported successful builds and commits through **2.12.4**. Earlier in-game and normal restart checks were reported for quest progression and rewards. The detailed step-by-step 2.12.4 gameplay verification log was not supplied for independent inspection. **A successful build alone does not prove every item-pickup/crafting edge case** (for example, shift-click/bulk crafting). Two-player tests and crash-timing tests remain open.
+**Verification scope:** The developer reports building and committing milestones through 2.13.6. Screenshots directly demonstrated an **applied cosmetic reload** and a **rejected incompatible quantity change** while preserving the active requirement. A malformed `requiredAmount: 0` pack was reported to cause a game failure without useful diagnostic feedback. A complete, independently inspected log of all 2.13.6 test scenarios (including the third-quest pack and optional rewards) has not been provided; successful compilation alone does not establish those individual results. The exact exception behind the invalid-pack failure is unknown.
 
-## Current prototype campaign
+## Current JSON-defined prototype campaign
 
-The runtime currently registers two **development-only, server-side** quests. These are not the final Create campaign:
+The default server data pack defines an ordered two-quest campaign. Stable IDs must not be casually changed, because progress and reward claims reference them in saved state.
 
-| Quest | Mandatory objective | Optional objective | Earned main rewards | Optional reward if completed before advancement |
+| Quest | Mandatory objective | Optional objective | Main rewards | Bonus if optional completed *before advancement* |
 |---|---|---|---|---|
-| **The First Workshop** (`theageofmachinery:prototype_first_workshop`) | Pick up 16 Cobblestone | Pick up 8 Oak Logs | 25 XP, 2 Iron Ingots | 10 XP |
-| **The First Tools** (`theageofmachinery:prototype_first_tools`) | Craft a Crafting Table (4 planks) | Craft a Furnace (8 cobblestone) | 50 XP | 15 XP |
+| **The First Workshop** — `theageofmachinery:prototype_first_workshop` | Pick up 16 Cobblestone | Pick up 8 Oak Logs | 25 XP and 2 Iron Ingots | 10 XP |
+| **The First Tools** — `theageofmachinery:prototype_first_tools` | Craft 1 Crafting Table | Craft 1 Furnace | 50 XP | 15 XP |
 
-Objective requirements are stored in `QuestObjective` records. The gameplay trigger is now explicit (`ObjectiveTrigger`): item-based objectives specify a trigger type and a validated item registry ID; existing four-argument constructors continue to create `MANUAL` objectives for compatibility. **Only objectives of the currently active quest receive progress.**
+The objective records include structured ingredient metadata, such as **4 planks** for a Crafting Table and **8 Cobblestone** for a Furnace. The ingredient data is authored configuration and does not itself implement a journal checklist or validate the actual crafting recipe.
 
-For now, *gathering* specifically means **successfully picking up dropped items**. It does not imply that the player mined or created those items, and it does not count every way to move items into inventory. The pickup listener counts the successful transfer amount (original stack minus remaining stack). Crafting detection counts the crafted output stack reported by the event; bulk/shift-click correctness deserves an explicit regression test.
+*Acquisition* currently means a **successful ground-item pickup**; it does not include every inventory insertion path, nor prove the player mined the item. The listener counts items actually transferred (original stack minus remaining stack). Shift-click/bulk crafting counts, partial pickups and repeated drop/re-pickup are still regression/design topics.
 
-The two prototype crafting requirements are still written as descriptive text. A structured, quantity-aware ingredient schema and player-facing checklist are planned; they are **not** yet implemented.
+A **third quest**, `theageofmachinery:prototype_storage_basics`, is provided as a **2.13.6 external data-pack test** to demonstrate adding a Chest-crafting quest without editing Java. It is **not part of the default two-quest manifest**. The existing debug claim command still only exposes `first` and `second` aliases.
+
+## JSON/data-pack layout
+
+```text
+src/main/resources/data/theageofmachinery/
+├── campaigns/
+│   └── main.json                  # explicit, stable quest order
+└── quests/
+    ├── prototype_first_workshop.json
+    └── prototype_first_tools.json
+
+docs/
+├── QUEST_JSON_FORMAT_V1.md
+├── schemas/
+│   ├── campaign.schema.json
+│   └── quest.schema.json
+├── milestones/                  # implementation notes for 2.13.x
+└── tests/                       # development-only data-pack fixtures
+```
+
+The manifest (`formatVersion: 1`) lists ordered quest resource IDs. Each quest JSON holds stable IDs, objectives, trigger types/targets, ingredient checklists, main rewards and optional rewards. The parser checks fields and model constraints; the assembler checks referenced quests, ordering and registered item IDs. Live loading also checks ingredient tags against the active resource/tag state.
+
+**Runtime policy:** On server startup the active data packs are loaded and validated to produce a campaign, then registered once. During `/reload`, a replacement is accepted only if compatible with the running campaign: **titles and descriptions may change**; IDs, order, quantities, triggers, ingredient lists and rewards may **not**. A rejected replacement leaves the previous in-memory campaign active. A successful Minecraft `/reload` message does not necessarily mean our mod accepted the new campaign; inspect `/tamruntime reloadstatus`.
+
+**Known incompatibility:** Structural changes can still become active on a later **world/server restart** because there is no persisted campaign-version lock. Treat live-reload safety and cross-restart migration as separate issues. Use disposable worlds to test different campaign structures; back up valuable saves.
+
+**Invalid-data behavior requires improvement:** A pack with `"requiredAmount": 0` was observed to cause a game failure with insufficient visible explanation. The correct policy is to reject invalid quest content, **not** silently accept or substitute a fallback; however, validation errors must clearly identify the affected resource, field path, offending value and cause, and startup/reload handling must be documented and tested. See I-011.
 
 ## Architecture
 
 ```text
 MinecraftServer
-  └── CampaignRuntime                       one instance per server session
-        ├── BuiltInCampaign / CampaignDefinition
-        │     └── QuestRewardDefinition     ordered server definitions
-        │           └── QuestObjective      ID, count, optional flag, ObjectiveTrigger
-        ├── CampaignAdvancementService      contains one registered QuestManager
-        │     └── QuestManager              objective progress; no separate player map
-        ├── RewardManager                   earned rewards and controlled claiming
-        └── CampaignSavedData               authoritative UUID-keyed state (NBT v3)
-              ├── PlayerQuestProgressCodec
-              └── PlayerRewardInventoryCodec
+  └── active data packs / resource manager
+        ├── CampaignDataPackLoader
+        ├── CampaignJsonParser + CampaignManifest
+        ├── CampaignDefinitionAssembler
+        └── CampaignDefinition (immutable, ordered)
+              └── CampaignRuntime (one per server session)
+                    ├── CampaignAdvancementService + registered QuestManager
+                    ├── RewardManager
+                    └── CampaignSavedData (UUID-keyed authoritative NBT v3)
 
-CampaignPlayerEvents                        initializes new players on server login
-CampaignCraftingEvents                      server crafting event adapter
-CampaignItemPickupEvents                    successful ground-pickup event adapter
-          └── CampaignObjectiveRouter       matches active objective by type + item ID
-                    └── CampaignRuntime     applies authoritative objective progress
-MinecraftRewardDelivery                    delivers actual XP/items to ServerPlayer
-command/*                                 operator-only development test harnesses
+CampaignPlayerEvents            first-login initialization; preserve returning saves
+CampaignCraftingEvents          server crafting event adapter
+CampaignItemPickupEvents        successful ground-pickup event adapter
+  └── CampaignObjectiveRouter   match only active-quest trigger/item; update runtime
+CampaignReloadEvents            after data-pack reload, candidate + compatibility check
+CampaignReloadCompatibility     text-only live replacement policy
+MinecraftRewardDelivery         actual server-side XP/item reward delivery
+command/*                       operator-only development testing/diagnostics
 ```
 
-Advancement checks mandatory objectives, calculates earned optional rewards, stages detached quest/reward state, and commits them together with a revision check. Claim operations are server-owned and guard against duplicate/reentrant claims. Gameplay updates go through `CampaignRuntime`, with player identity derived from `ServerPlayer` and server-thread validation.
+A compatible runtime reload replaces campaign definitions and the registered advancement service **without creating or resetting the player save store**. This is an in-session guarantee; it is not a persistent migration system.
 
-**Important limitation:** Minecraft player inventory/XP data and this mod's `SavedData` are **not** one durable transaction. A crash or callback failure after reward delivery may leave uncertain outcomes. Exactly-once delivery and crash recovery are **not** claimed. See [`docs/FUTURE_CORRECTIONS.md`](docs/FUTURE_CORRECTIONS.md).
+**Reward durability caveat:** Minecraft XP/inventory and mod `SavedData` are not a single crash-atomic transaction. An unexpected crash after item/XP delivery but before durable claim state may produce an uncertain outcome. Exactly-once delivery is **not** guaranteed.
 
-## Technical requirements and development
+## Development requirements
 
-- **Minecraft:** Java Edition 1.21.1
-- **NeoForge:** 21.1.233 (project development target)
-- **Java:** JDK 21
-- **Build:** Gradle / ModDevGradle on Windows
-- **Editor:** VS Code
-- **Mod ID:** `theageofmachinery`
-- **Current Java package:** `com.TheAgeOfMachinery` (case-sensitive; do not silently rename)
-- **Create/Create+:** intended integration; actual Create dependencies and compatibility still need verification in the target modpack.
+- Minecraft Java Edition **1.21.1**
+- NeoForge **21.1.233** (project development target)
+- **JDK 21**, Gradle/ModDevGradle, Windows, VS Code
+- Mod ID: `theageofmachinery`
+- Current Java package: `com.TheAgeOfMachinery` (case-sensitive)
+- Create: **official Minecraft 1.21.1 target is 6.0.10**; official addon Maven coordinates use `create_version=6.0.10-280`, Ponder `1.0.82`, Flywheel `1.0.6`, Registrate `MC1.21-1.3.0+67`. Adding the dependency to this project and actual Create+ modpack verification are **pending 2.14.1**.
+- Official dependency guide: https://wiki.createmod.net/developers/depend-on-create/neoforge-1.21.1
 
-From the repository root in PowerShell:
+From repository root:
 
 ```powershell
 .\gradlew.bat build
 .\gradlew.bat runClient
 ```
 
-Compiled JARs appear under `build/libs/`. The NeoForge development client does **not** automatically contain mods or worlds from a separate Modrinth Create+ profile. Check dependency versions and back up worlds before testing updated builds.
+The Gradle dev client is separate from a Modrinth Create+ profile. Use test worlds and backups when working with incompatible packs or save formats.
 
-## Development commands
+## Operator-only development commands
 
-These are **operator/debug tools**, not the finished player experience. They generally require Minecraft permission level 2 and must be disabled, separated, or strictly gated before a public release.
+These commands are for testing and diagnosis, **not** the finished player experience. They must be restricted or removed before a public release. Some command names may depend on which test harnesses remain registered in a branch.
 
 | Command | Purpose |
 |---|---|
-| `/tamruntime status` | Inspect active server runtime session |
-| `/tamruntime campaign` | Operator-only inspection of prototype quest ordering (spoiler-sensitive) |
-| `/tamruntime player` | Show the current active quest and objectives |
-| `/tamruntime progress <objectiveId> <amount>` | Simulate arbitrary objective progress **for debugging only**; no longer required for the two prototype objectives |
-| `/tamruntime advance` | **Manually** finalize an eligible quest and unlock earned rewards |
-| `/tamruntime rewards` | List unlocked reward entries and claim states |
-| `/tamruntime claim first <rewardId>` / `second <rewardId>` | Claim earned prototype rewards |
-| `/tamruntime verify` | Verify invalid objective/reward operations do not change state |
-| `/tamruntime audit` | Read-only player-state diagnostics for operators |
+| `/tamruntime status` / `campaign` / `player` | Inspect session, ordered quest IDs and active objectives |
+| `/tamruntime progress <objectiveId> <amount>` | **Debug-only** simulated objective progress |
+| `/tamruntime advance` | Finalize eligible active quest (manual advancement) |
+| `/tamruntime rewards` | Inspect *unlocked* reward entries and claim states |
+| `/tamruntime claim first <rewardId>` / `second <rewardId>` | Claim earned prototype rewards; aliases currently limited to two quests |
+| `/tamruntime verify` / `audit` | Check rejected operations and read-only player diagnostics |
+| `/tamjson test` | JSON parser and negative-case tests |
+| `/tamregistry test` | Whole-campaign validation tests |
+| `/tamreloadtest` | Compatible/incompatible definition policy test; **spelling is reload** |
+| `/tamruntime reloadstatus` | Whether mod campaign reload was applied or rejected |
+| `/datapack list enabled` | Inspect Minecraft-enabled packs (vanilla command) |
 
-Other `/tamtest`, `/tamrewardtest`, `/tamsavetest`, `/tamquestsave`, `/tamrewardsave`, `/tammanagertest`, `/tamadvancetest`, `/tamstatetest`, `/tamquestrevision`, `/tamrewardrevision`, and `/tamfailuretest` commands are isolated test harnesses, **not** ordinary gameplay features.
+Additional test harness commands exist for persistence, staged advancement and reward failures. Operator commands that display full campaign IDs are spoiler-sensitive and must not be accessible to ordinary players.
+
+**Temporary progress feedback:** The active item-event router sends quest-update **chat/system messages on each matching pickup or craft event**. This is useful without a UI but will flood the chat during ordinary gameplay. The intended UI will receive relevant progress state/deltas and display restrained updates (e.g., completion notification or journal update) instead of one chat line per item. Production `LOGGER` errors/warnings for administrators are a separate channel and should not be disabled with chat feedback.
+
+## Create integration architecture and milestones (2.14)
+
+**Design principle:** count *verified engineering behavior*, not merely an item existing in inventory or a machine block being placed. Reuse `CampaignRuntime`, server authority, `CampaignSavedData`, JSON quest models and the existing event router. Do **not** create another progression engine.
+
+**Dependency choice:** Create is intended as a **required** dependency for the released addon (both client and server). As of 27 October 2026, the official 1.21.1 NeoForge addon guide targets **Create 6.0.10** and the development Maven build `6.0.10-280` with **Ponder 1.0.82**, **Flywheel 1.0.6** and **Registrate MC1.21-1.3.0+67**. The exact Create version and addon compatibility in the user's **Create+** modpack are not yet checked; do not imply tested compatibility. Source: <https://wiki.createmod.net/developers/depend-on-create/neoforge-1.21.1>.
+
+| Milestone | Goal | Acceptance / deliverable | Status |
+|---|---|---|---|
+| **2.14.1** | Create dependency and dev environment | Mod resolves Create dependencies, builds, launches with Create and runs a mechanical demonstration; existing prototype still works; inspect actual Create+ profile | **NEXT, NOT VERIFIED** |
+| **2.14.2** | Machine-event contracts, attribution and JSON semantics | Define authoritative evidence of operation, player ownership, offline/multiplayer behavior and idempotency | Planned |
+| **2.14.3** | Kinetic power objective | Recognize a functioning rotational network with meaningful speed/stress/connection conditions, not block placement | Planned |
+| **2.14.4** | Mechanical Press processing | Recognize a completed pressing operation with credible recipe/output provenance; reject mere item possession | Planned |
+| **2.14.5** | Generic processing and automated production | Reusable objectives for selected Millstone, Crushing Wheels and Mixer workflows; batch counting and duplicate prevention | Planned |
+| **2.14.6** | Create progression chapter | Data-pack-authored Create quests, structured ingredients, optional engineering challenges, manual advancement and earned rewards | Planned |
+| **2.14.7** | Real-mod gameplay regression | Powered/unpowered cases, processing correctness, persistence, optional outcomes, repeated operations and actual Create+ compatibility; document untested multi-account scenarios | Planned |
+
+**Player attribution is unresolved (I-013):** Create machines can keep running after the builder leaves. Do not assume the nearest player owns a machine or award output to everyone nearby. Finalize explicit association and cleanup rules before awarding automatic processing progress.
+
+**Provenance and duplicate counting are unresolved (I-014):** collecting an Iron Sheet is not proof that a Mechanical Press produced it. Observe actual successful operations where possible, choose a single authoritative count point, and avoid crediting the same output through overlapping pickup/processing handlers.
+
+**Chat-output policy (I-012):** routine per-item quest chat is temporary debugging feedback, not the target UX. Create processing can generate high-frequency updates; the player-facing UI must aggregate progress rather than write a line per machine operation. Do not suppress actionable server errors (I-011).
+
+**Known release risks remain open:** startup-invalid-JSON diagnostics (I-011), campaign definition locking across world restarts (P-003), crash-timing reward delivery (P-005), two-player isolation (I-003), debug command access (P-006) and automated regression coverage (I-004). Use disposable worlds for integration experiments.
 
 ## Roadmap
 
-- [x] **2.1–2.6 — Domain and reward systems:** quests, objectives, rewards, Minecraft XP/item delivery.
-- [x] **2.7–2.10 — Persistence and transaction integrity:** NBT v3, shared authoritative state, staged advancement, guarded claims and validation.
-- [x] **2.11 — Server runtime:** lifecycle, prototype registration, shared operations, login initialization and player/server authority.
-- [x] **2.12 — Real Minecraft gameplay integration:** crafting detection (2.12.1), successful ground-item acquisition (2.12.2), reusable objective event routing (2.12.3), gameplay vertical-slice verification milestone (2.12.4). **Builds and commits reported complete; specific edge-case tests remain tracked.**
-- [ ] **2.13 — JSON/data-pack campaigns:**
-  - [ ] **2.13.1** JSON schema, explicit campaign order, reward and structured ingredient metadata.
-  - [ ] **2.13.2** JSON parsing and conversion to existing validated Java domain models.
-  - [ ] **2.13.3** Atomic whole-campaign validation: unique IDs, references, registry identifiers, reward associations.
-  - [ ] **2.13.4** Minecraft data-pack loading, runtime integration, prototype content migration to JSON without changing saved IDs.
-  - [ ] **2.13.5** Safe `/reload` behavior and definition/save compatibility rules for existing players.
-  - [ ] **2.13.6** End-to-end JSON campaign tests, including invalid data, restarts and a new quest without recompilation.
-- [ ] **2.14 — Create integration:** validate Create/Create+ versions, detect real processing and functional engineering achievements.
-- [ ] **2.15 — Spoiler-safe networking and UI:** Quest Journal, ingredient checklist, hints, manual advancement and grouped reward claims.
-- [ ] **Release hardening:** automated regression tests, two-player dedicated-server verification, save migration checks, crash recovery policy, permission/diagnostic restrictions.
+- [x] **2.1–2.6:** quest models, rewards and Minecraft delivery.
+- [x] **2.7–2.10:** persistent save data, revision-controlled staging and guarded claims.
+- [x] **2.11:** server-scoped runtime, quest registration, login lifecycle and server authority.
+- [x] **2.12.1–2.12.4:** vanilla crafting/pickup tracking, objective routing and development gameplay verification.
+- [x] **2.13.1:** versioned JSON schema, manifest and example quests.
+- [x] **2.13.2:** strict parser and Java model conversion, structured ingredient metadata.
+- [x] **2.13.3:** whole-campaign reference/registry validation and ordered assembly.
+- [x] **2.13.4:** startup data-pack loading into the server runtime, including an override fixture.
+- [x] **2.13.5:** compatible presentation-only live reload, incompatible structural reload rejection.
+- [x] **2.13.6:** end-to-end JSON integration verification milestone; build and commit reported successful. **Known invalid-pack diagnostic failure remains open.**
+- [ ] **2.14.1 — Dependency setup:** officially documented Create 6.0.10 target confirmed; Gradle/runtime installation and dev-world test pending.
+- [ ] **2.14.2–2.14.7 — Create achievements:** trusted machine events, attribution, kinetics, pressing, general processing, JSON campaign chapter and Create+ integration tests.
+- [ ] **2.15 — Networking and Quest Journal:** spoiler-filtered client state, structured ingredient checklists, hints, manual advancement and reward claims; replace noisy per-item chat feedback.
+- [ ] **Release hardening:** actionable invalid-pack errors (I-011), startup definition locking/migrations (P-003), full automated regression suite, security/permission checks, two-player verification (I-003), crash-recovery policy (P-005), debug-command gating.
 
-### Data-pack transition rules for 2.13
-
-The planned JSON loader must **not** reinitialize player progress or recreate rewards merely because definitions reload. Quest/objective/reward IDs must remain stable where existing saves refer to them. Load and validate a **complete** candidate campaign before activating it; do not partially replace definitions. Decide how to reject or migrate incompatible order, count, target, and reward changes while players are progressing. `/reload` support is a separate milestone, not implied by parsing JSON.
-
-Campaign definitions and reward lists are server-managed. The future client protocol must send only the permitted active quest, completed history, and earned rewards; operator debug visibility does not define normal client visibility. Note that content embedded in a distributed client JAR is not confidential from someone inspecting the JAR.
-
-**Multiplayer test status:** Simultaneous two-player progression remains **PENDING / NOT TESTED** due to lack of a second account. That limitation does not block 2.13, but it remains a release verification gate.
-
-See [`docs/FUTURE_CORRECTIONS.md`](docs/FUTURE_CORRECTIONS.md) for the issue ledger and acceptance criteria.
+**2.13 is complete as a development sequence, not a claim of production readiness.** Reported compilation/commits and selected in-game checks do not establish all malformed-data, multiplayer, automation or crash-timing behavior.
 
 ## License
 
-**All Rights Reserved** under the currently recorded project configuration. A public GitHub repository does not automatically grant redistribution or modification rights. Add a license explicitly if you later want to permit either.
+**All Rights Reserved** under the currently recorded project configuration. A public GitHub repository alone does not grant rights to redistribute or modify the code; explicitly choose a license if those rights should be granted.
