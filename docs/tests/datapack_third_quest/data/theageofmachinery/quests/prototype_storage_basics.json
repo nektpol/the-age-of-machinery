@@ -1,0 +1,35 @@
+
+{
+  "formatVersion": 1,
+  "id": "theageofmachinery:prototype_storage_basics",
+  "title": "The First Storage",
+  "description": "Build a place to store the resources collected for future machinery.",
+  "objectives": [
+    {
+      "id": "craft_chest",
+      "description": "Craft a Chest",
+      "requiredAmount": 1,
+      "optional": false,
+      "trigger": {
+        "type": "CRAFT_ITEM",
+        "item": "minecraft:chest"
+      },
+      "ingredients": [
+        {
+          "tag": "minecraft:planks",
+          "amount": 8
+        }
+      ]
+    }
+  ],
+  "rewards": {
+    "main": [
+      {
+        "id": "main_xp",
+        "type": "EXPERIENCE",
+        "amount": 30
+      }
+    ],
+    "optional": {}
+  }
+}
