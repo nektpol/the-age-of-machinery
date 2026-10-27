@@ -130,7 +130,18 @@ From repository root:
 .\gradlew.bat runClient
 ```
 
-The Gradle dev client is separate from a Modrinth Create+ profile. Use test worlds and backups when working with incompatible packs or save formats.
+The Gradle client copies the Create+ profile's mods and supporting configuration into
+`run-createplus` and loads this project's mod directly from its compiled sources.
+Set the profile location in `%USERPROFILE%\.gradle\gradle.properties` (use forward slashes):
+
+```properties
+createPlusProfile=C:/Users/YOUR_NAME/AppData/Roaming/ModrinthApp/profiles/Create+
+```
+
+The checked-in Gradle daemon criteria select Java 21 even when the shell's default
+Java version differs. Connector's development runtime also needs a clean,
+Mojang-mapped Minecraft JAR; Gradle generates it and passes `connector.clean.path`
+automatically. Profile saves are not copied. Use test worlds for development.
 
 ## Operator-only development commands
 
