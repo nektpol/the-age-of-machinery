@@ -31,6 +31,7 @@ import com.TheAgeOfMachinery.runtime.CampaignReloadEvents;
 import com.TheAgeOfMachinery.runtime.CampaignItemPickupEvents;
 
 import com.TheAgeOfMachinery.create.ownership.MachineOwnershipTestCommand;
+import com.TheAgeOfMachinery.create.ownership.MachineOwnershipEvents;
 
 import net.neoforged.neoforge.common.NeoForge;
 
@@ -70,6 +71,10 @@ public class TheAgeofMachinery
         NeoForge.EVENT_BUS.addListener(CampaignReloadEvents::onDatapackSync);
 
         NeoForge.EVENT_BUS.addListener(MachineOwnershipTestCommand::register);
+        NeoForge.EVENT_BUS.addListener(MachineOwnershipEvents::onPlacement);
+        NeoForge.EVENT_BUS.addListener(MachineOwnershipEvents::onBreak);
+        NeoForge.EVENT_BUS.addListener(MachineOwnershipEvents::onServerTick);
+        NeoForge.EVENT_BUS.addListener(MachineOwnershipEvents::onServerStopped);
     }
 }
 

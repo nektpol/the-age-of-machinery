@@ -60,6 +60,8 @@ final class MachineOwnershipSavedData extends SavedData
         Objects.requireNonNull(blockId, "blockId");
         Objects.requireNonNull(builderId, "builderId");
 
+        if (installations.containsKey(location)) throw new IllegalArgumentException("Machine already registered at " + location);
+
         MachineOwnership ownership = new MachineOwnership( UUID.randomUUID(), location, blockId, Set.of(builderId));
 
         installations.put(location, ownership);

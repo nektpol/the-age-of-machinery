@@ -1,6 +1,9 @@
+
 package com.TheAgeOfMachinery.create.ownership;
 
 import com.TheAgeOfMachinery.create.MachineLocation;
+import com.simibubi.create.content.kinetics.base.KineticBlock;
+import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
@@ -12,10 +15,10 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
-public final class MachineOwnershipRegistry 
-{
+public final class MachineOwnershipRegistry {
 
-    private MachineOwnershipRegistry() {
+    private MachineOwnershipRegistry() 
+    {
     }
 
     public static MachineOwnership registerPlacement(ServerPlayer builder, BlockPos position) 
@@ -23,18 +26,31 @@ public final class MachineOwnershipRegistry
         Objects.requireNonNull(builder, "builder");
         Objects.requireNonNull(position, "position");
 
-        ServerLevel level = builder.serverLevel();
+        return tryRegisterPlacement(builder.serverLevel(), position, builder.getUUID())
+                .orElseThrow(() -> new IllegalArgumentException("Machine already registered at " + position));
+    }
+
+    static Optional<MachineOwnership> tryRegisterPlacement(ServerLevel level, BlockPos position, UUID builderId) 
+    {
+        Objects.requireNonNull(level, "level");
+        Objects.requireNonNull(position, "position");
+        Objects.requireNonNull(builderId, "builderId");
+
+        if (!level.getServer().isSameThread()) throw new IllegalStateException("Machine registration must run on the server thread");
 
         if (!level.getChunkSource().hasChunk(position.getX() >> 4, position.getZ() >> 4)) throw new IllegalArgumentException("Cannot register a machine in an unloaded chunk");
 
         BlockState state = level.getBlockState(position);
 
-        if (!state.hasBlockEntity()) throw new IllegalArgumentException("The selected block does not have a block entity");
+        if (!(state.getBlock() instanceof KineticBlock) || !(level.getBlockEntity(position) instanceof KineticBlockEntity)) throw new IllegalArgumentException("The selected block is not a supported Create kinetic machine");
 
-        ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(Objects.requireNonNull(state.getBlock()));
         MachineLocation location = new MachineLocation(level.dimension(), position);
+        MachineOwnershipSavedData savedData = MachineOwnershipSavedData.get(level.getServer());
 
-        return MachineOwnershipSavedData.get(level.getServer()).registerInstallation(location, blockId, builder.getUUID());
+        if (savedData.find(location).isPresent()) return Optional.empty();
+
+        ResourceLocation blockId = Objects.requireNonNull(BuiltInRegistries.BLOCK.getKey(Objects.requireNonNull(state.getBlock())));
+        return Optional.of(savedData.registerInstallation(location, blockId, builderId));
     }
 
     public static Optional<MachineOwnership> find(ServerLevel level, BlockPos position) 
@@ -45,14 +61,14 @@ public final class MachineOwnershipRegistry
         MachineLocation location = new MachineLocation(level.dimension(), position);
         Optional<MachineOwnership> ownership = MachineOwnershipSavedData.get(level.getServer()).find(location);
 
-        if (ownership.isEmpty() || !level.getChunkSource().hasChunk(position.getX() >> 4, position.getZ() >> 4)) return Optional.empty();
+        if (ownership.isEmpty()) return Optional.empty();
+        if (!level.getChunkSource().hasChunk(position.getX() >> 4, position.getZ() >> 4)) return Optional.empty();
 
         BlockState state = level.getBlockState(position);
 
-        if (!state.hasBlockEntity()) return Optional.empty();
+        if (!(state.getBlock() instanceof KineticBlock) || !(level.getBlockEntity(position) instanceof KineticBlockEntity)) return Optional.empty();
 
-        ResourceLocation currentBlockId = BuiltInRegistries.BLOCK.getKey(Objects.requireNonNull(state.getBlock()));
-
+        ResourceLocation currentBlockId = Objects.requireNonNull(BuiltInRegistries.BLOCK.getKey(Objects.requireNonNull(state.getBlock())));
         return ownership.filter(entry -> entry.blockId().equals(currentBlockId));
     }
 
@@ -63,8 +79,6 @@ public final class MachineOwnershipRegistry
         Objects.requireNonNull(expectedInstallationId, "expectedInstallationId");
 
         MachineLocation location = new MachineLocation(level.dimension(), position);
-
         return MachineOwnershipSavedData.get(level.getServer()).unregisterInstallation(location, expectedInstallationId);
     }
 }
-
