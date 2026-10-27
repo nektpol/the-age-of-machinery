@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.TheAgeOfMachinery.create.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "MechanicalPressBlockEntityMixin",
+    "BasinBlockEntityMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
