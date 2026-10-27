@@ -32,6 +32,8 @@ import com.TheAgeOfMachinery.runtime.CampaignItemPickupEvents;
 
 import com.TheAgeOfMachinery.create.ownership.MachineOwnershipTestCommand;
 import com.TheAgeOfMachinery.create.ownership.MachineOwnershipEvents;
+import com.TheAgeOfMachinery.create.CreateObjectiveRouter;
+import com.TheAgeOfMachinery.create.CreateObjectiveTestCommand;
 
 import net.neoforged.neoforge.common.NeoForge;
 
@@ -75,6 +77,8 @@ public class TheAgeofMachinery
         NeoForge.EVENT_BUS.addListener(MachineOwnershipEvents::onBreak);
         NeoForge.EVENT_BUS.addListener(MachineOwnershipEvents::onServerTick);
         NeoForge.EVENT_BUS.addListener(MachineOwnershipEvents::onServerStopped);
+        NeoForge.EVENT_BUS.addListener(CreateObjectiveTestCommand::register);
+        NeoForge.EVENT_BUS.addListener(CreateObjectiveRouter::onServerStopped);
     }
 }
 

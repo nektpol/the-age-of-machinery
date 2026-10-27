@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://example.invalid/the-age-of-machinery/schemas/quest.schema.json",
   "title": "The Age of Machinery - Quest Definition v1",
-  "description": "Authoring-time schema. Cross-definition validation is performed by the future Java loader.",
+  "description": "Authoring-time schema for vanilla and Create objective triggers. Cross-quest and registry checks are performed by the Java loader.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -83,6 +83,47 @@
               ]
             },
             "item": {
+              "$ref": "#/$defs/resourceId"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "machine",
+            "minSpeed"
+          ],
+          "properties": {
+            "type": {
+              "const": "KINETIC_ACTIVE"
+            },
+            "machine": {
+              "$ref": "#/$defs/resourceId"
+            },
+            "minSpeed": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "machine",
+            "output"
+          ],
+          "properties": {
+            "type": {
+              "const": "MACHINE_PROCESS"
+            },
+            "machine": {
+              "$ref": "#/$defs/resourceId"
+            },
+            "output": {
               "$ref": "#/$defs/resourceId"
             }
           }
@@ -189,6 +230,32 @@
               "required": [
                 "ingredients"
               ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "trigger": {
+                "properties": {
+                  "type": {
+                    "const": "KINETIC_ACTIVE"
+                  }
+                },
+                "required": [
+                  "type"
+                ]
+              }
+            },
+            "required": [
+              "trigger"
+            ]
+          },
+          "then": {
+            "properties": {
+              "requiredAmount": {
+                "const": 1
+              }
             }
           }
         }

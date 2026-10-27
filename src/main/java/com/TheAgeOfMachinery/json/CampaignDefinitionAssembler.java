@@ -1,7 +1,6 @@
 package com.TheAgeOfMachinery.json;
 
 import com.TheAgeOfMachinery.quest.CampaignDefinition;
-import com.TheAgeOfMachinery.quest.ObjectiveTriggerType;
 import com.TheAgeOfMachinery.quest.QuestIngredient;
 import com.TheAgeOfMachinery.quest.QuestObjective;
 import com.TheAgeOfMachinery.reward.ItemReward;
@@ -51,10 +50,28 @@ public final class CampaignDefinitionAssembler
         for (QuestObjective objective : definition.quest().objectives())
         {
             String path = "[" + questId + "] objectives." + objective.id();
-
-            if (objective.trigger().type() != ObjectiveTriggerType.MANUAL)
+            
+            switch (objective.trigger().type())
             {
-                requireRegisteredItem(objective.trigger().itemId(), path + ".trigger.item");
+                case MANUAL ->
+                {
+                }
+
+                case CRAFT_ITEM, PICKUP_ITEM ->
+                {
+                    requireRegisteredItem(objective.trigger().itemId(), path + ".trigger.item");
+                }
+
+                case KINETIC_ACTIVE ->
+                {
+                    requireRegisteredBlock(objective.trigger().machineId(), path + ".trigger.machine");
+                }
+
+                case MACHINE_PROCESS ->
+                {
+                    requireRegisteredBlock(objective.trigger().machineId(), path + ".trigger.machine");
+                    requireRegisteredItem(objective.trigger().itemId(), path + ".trigger.output");
+                }
             }
 
             for (int index = 0; index < objective.ingredients().size(); index++)
@@ -72,6 +89,13 @@ public final class CampaignDefinitionAssembler
         {
             validateRewards(entry.getValue(), questId, "rewards.optional." + entry.getKey());
         }
+    }
+    
+    private static void requireRegisteredBlock(String blockId, String path)
+    {
+        ResourceLocation id = Objects.requireNonNull(ResourceLocation.parse(Objects.requireNonNull(blockId)));
+
+        if (!BuiltInRegistries.BLOCK.containsKey(id)) throw new IllegalArgumentException(path + ": Unregistered block: " + blockId);
     }
 
     private static void validateRewards(List<RewardDefinition> rewards, String questId, String path)

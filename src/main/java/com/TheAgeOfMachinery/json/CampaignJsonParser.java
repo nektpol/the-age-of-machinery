@@ -164,6 +164,7 @@ public final class CampaignJsonParser
         }
     }
 
+
     private static ObjectiveTrigger parseTrigger(JsonElement element, ResourceLocation sourceId, String path)
     {
         JsonObject json = object(element, sourceId, path);
@@ -179,17 +180,73 @@ public final class CampaignJsonParser
             throw error(sourceId, path + ".type", "Unsupported trigger: " + typeName);
         }
 
-        if (type == ObjectiveTriggerType.MANUAL)
+        switch (type)
         {
-            keys(json, sourceId, path, Set.of("type"));
-            return ObjectiveTrigger.manual();
+            case MANUAL ->
+            {
+                keys(json, sourceId, path, Set.of("type"));
+                return ObjectiveTrigger.manual();
+            }
+
+            case CRAFT_ITEM ->
+            {
+                keys(json, sourceId, path, Set.of("type", "item"));
+                String itemId = resourceId(json, "item", sourceId, path + ".item");
+                return ObjectiveTrigger.craftItem(itemId);
+            }
+
+            case PICKUP_ITEM ->
+            {
+                keys(json, sourceId, path, Set.of("type", "item"));
+                String itemId = resourceId(json, "item", sourceId, path + ".item");
+                return ObjectiveTrigger.pickupItem(itemId);
+            }
+
+            case KINETIC_ACTIVE ->
+            {
+                keys(json, sourceId, path, Set.of("type", "machine", "minSpeed"));
+
+                String machineId = resourceId(json, "machine", sourceId, path + ".machine");
+                float minSpeed = positiveFloat(json, "minSpeed", sourceId, path + ".minSpeed");
+
+                return ObjectiveTrigger.kineticActive(machineId, minSpeed);
+            }
+
+            case MACHINE_PROCESS ->
+            {
+                keys(json, sourceId, path, Set.of("type", "machine", "output"));
+
+                String machineId = resourceId(json, "machine", sourceId, path + ".machine");
+                String outputId = resourceId(json, "output", sourceId, path + ".output");
+
+                return ObjectiveTrigger.machineProcess(machineId, outputId);
+            }
         }
 
-        keys(json, sourceId, path, Set.of("type", "item"));
-        String itemId = resourceId(json, "item", sourceId, path + ".item");
-
-        return type == ObjectiveTriggerType.CRAFT_ITEM ? ObjectiveTrigger.craftItem(itemId) : ObjectiveTrigger.pickupItem(itemId);
+        throw error(sourceId, path + ".type", "Unsupported trigger: " + typeName);
     }
+
+    
+    private static float positiveFloat(JsonObject json, String key, ResourceLocation sourceId, String path)
+    {
+        JsonElement element = required(json, key, sourceId, path);
+
+        if (!element.isJsonPrimitive() || !element.getAsJsonPrimitive().isNumber()) throw error(sourceId, path, "Expected a positive number.");
+
+        try
+        {
+            float value = new BigDecimal(element.getAsString()).floatValue();
+
+            if (!Float.isFinite(value) || value <= 0f) throw error(sourceId, path, "Value must be finite and greater than zero.");
+
+            return value;
+        }
+        catch (NumberFormatException exception)
+        {
+            throw error(sourceId, path, "Invalid floating-point value.");
+        }
+    }
+
 
     private static QuestIngredient parseIngredient(JsonElement element, ResourceLocation sourceId, String path)
     {

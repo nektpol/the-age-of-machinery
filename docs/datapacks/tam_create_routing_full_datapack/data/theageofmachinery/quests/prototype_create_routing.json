@@ -1,0 +1,48 @@
+{
+  "formatVersion": 1,
+  "id": "theageofmachinery:prototype_create_routing",
+  "title": "The First Powered Workshop",
+  "description": "Establish a powered mechanical device and demonstrate mechanical processing.",
+  "objectives": [
+    {
+      "id": "power_mechanical_press",
+      "description": "Operate a Mechanical Press at 16 RPM or higher",
+      "requiredAmount": 1,
+      "optional": false,
+      "trigger": {
+        "type": "KINETIC_ACTIVE",
+        "machine": "create:mechanical_press",
+        "minSpeed": 16
+      }
+    },
+    {
+      "id": "press_iron_sheets",
+      "description": "Produce 3 Iron Sheets with a Mechanical Press",
+      "requiredAmount": 3,
+      "optional": true,
+      "trigger": {
+        "type": "MACHINE_PROCESS",
+        "machine": "create:mechanical_press",
+        "output": "create:iron_sheet"
+      }
+    }
+  ],
+  "rewards": {
+    "main": [
+      {
+        "id": "main_xp",
+        "type": "EXPERIENCE",
+        "amount": 30
+      }
+    ],
+    "optional": {
+      "press_iron_sheets": [
+        {
+          "id": "optional_xp",
+          "type": "EXPERIENCE",
+          "amount": 15
+        }
+      ]
+    }
+  }
+}

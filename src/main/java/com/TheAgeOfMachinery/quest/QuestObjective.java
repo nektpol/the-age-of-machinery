@@ -12,6 +12,7 @@ public record QuestObjective(String id, String description, int requiredAmount, 
         if (description == null || description.isBlank()) throw new IllegalArgumentException("Objective description cannot be empty.");
         if (requiredAmount <= 0) throw new IllegalArgumentException("Required amount must be positive.");
         Objects.requireNonNull(trigger, "Objective trigger cannot be null.");
+        if (trigger.type() == ObjectiveTriggerType.KINETIC_ACTIVE && requiredAmount != 1) throw new IllegalArgumentException("Kinetic objectives must require exactly one successful activation.");
         Objects.requireNonNull(ingredients, "Objective ingredients cannot be null.");
         ingredients = List.copyOf(ingredients);
     }
