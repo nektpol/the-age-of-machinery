@@ -158,11 +158,11 @@ Additional test harness commands exist for persistence, staged advancement and r
 
 **Design principle:** count *verified engineering behavior*, not merely an item existing in inventory or a machine block being placed. Reuse `CampaignRuntime`, server authority, `CampaignSavedData`, JSON quest models and the existing event router. Do **not** create another progression engine.
 
-**Dependency choice:** Create is intended as a **required** dependency for the released addon (both client and server). As of 27 October 2026, the official 1.21.1 NeoForge addon guide targets **Create 6.0.10** and the development Maven build `6.0.10-280` with **Ponder 1.0.82**, **Flywheel 1.0.6** and **Registrate MC1.21-1.3.0+67**. The exact Create version and addon compatibility in the user's **Create+** modpack are not yet checked; do not imply tested compatibility. Source: <https://wiki.createmod.net/developers/depend-on-create/neoforge-1.21.1>.
+**Dependency choice:** Create is intended as a **required** dependency for the released addon (both client and server). As of 27 October 2026, the official 1.21.1 NeoForge addon guide targets **Create 6.0.10** and the development Maven build `6.0.10-280` with **Ponder 1.0.82**, **Flywheel 1.0.6** and **Registrate MC1.21-1.3.0+67**. The reference **Create+ modpack release is 6.0.0-alpha-f**. The user confirmed their built mod is discovered when launching the modpack; the precise installed Create/loader versions and full in-world objective regressions have not been independently documented. Source: <https://wiki.createmod.net/developers/depend-on-create/neoforge-1.21.1>.
 
 | Milestone | Goal | Acceptance / deliverable | Status |
 |---|---|---|---|
-| **2.14.1** | Create dependency and dev environment | Mod resolves Create dependencies, builds, launches with Create and runs a mechanical demonstration; existing prototype still works; inspect actual Create+ profile | **NEXT, NOT VERIFIED** |
+| **2.14.1** | Create dependency and dev environment | Gradle dependencies/build and dev client succeeded; mod detected in Create+ 6.0.0-alpha-f | **Build and modpack load user-confirmed; in-world quest/mechanical regression not separately evidenced** |
 | **2.14.2** | Machine-event contracts, attribution and JSON semantics | Define authoritative evidence of operation, player ownership, offline/multiplayer behavior and idempotency | Planned |
 | **2.14.3** | Kinetic power objective | Recognize a functioning rotational network with meaningful speed/stress/connection conditions, not block placement | Planned |
 | **2.14.4** | Mechanical Press processing | Recognize a completed pressing operation with credible recipe/output provenance; reject mere item possession | Planned |
@@ -170,7 +170,15 @@ Additional test harness commands exist for persistence, staged advancement and r
 | **2.14.6** | Create progression chapter | Data-pack-authored Create quests, structured ingredients, optional engineering challenges, manual advancement and earned rewards | Planned |
 | **2.14.7** | Real-mod gameplay regression | Powered/unpowered cases, processing correctness, persistence, optional outcomes, repeated operations and actual Create+ compatibility; document untested multi-account scenarios | Planned |
 
-**Player attribution is unresolved (I-013):** Create machines can keep running after the builder leaves. Do not assume the nearest player owns a machine or award output to everyone nearby. Finalize explicit association and cleanup rules before awarding automatic processing progress.
+### Ownership policy agreed for 2.14.2 (I-013)
+
+**Initial implementation: builder = owner.** When the server can reliably attribute construction/placement of a supported Create machine, associate that installation with the placing player's UUID. The association must be authoritative and persisted; never infer ownership from the closest player, the current item holder or the last player to activate the machine. Exactly how a multi-block installation is identified, and which placement action defines its builder, remain implementation details to settle against Create APIs.
+
+**Future feature: area-registration item for cooperative workshops (deferred; not part of the first machine integration).** The item establishes a bounded area/installation in which players can register for shared credit. Every registered player is an **owner**; any owner can open or close registration. When a qualifying machine event occurs in that area, each registered owner receives progress **independently, only if their currently active quest includes a matching objective**. Someone on another quest, with a different active objective, or with a completed campaign receives no progress from that event. Merely being physically nearby is not sufficient for membership or credit.
+
+**Multiplayer-first data model:** Represent ownership internally as a set of player UUIDs, even while initial placement adds only one owner. Keep ownership separate from quest completion state; process each eligible owner independently through the existing server-authoritative campaign runtime. Do not introduce a shared global quest counter, and preserve per-player advancement and rewards. Ensure the same verified machine event cannot credit any one owner more than once.
+
+**Still to design before implementation:** installation identity for connected/multi-block networks; registration area overlap/conflict and membership removal; persistence, teardown/replacement, permissions/owner revocation, unloaded chunks, offline members, and handling of placement by automation or unknown actors. For the initial version, events without reliable builder attribution must not be arbitrarily credited. Two-player end-to-end behavior remains **untested**.
 
 **Provenance and duplicate counting are unresolved (I-014):** collecting an Iron Sheet is not proof that a Mechanical Press produced it. Observe actual successful operations where possible, choose a single authoritative count point, and avoid crediting the same output through overlapping pickup/processing handlers.
 
@@ -190,7 +198,7 @@ Additional test harness commands exist for persistence, staged advancement and r
 - [x] **2.13.4:** startup data-pack loading into the server runtime, including an override fixture.
 - [x] **2.13.5:** compatible presentation-only live reload, incompatible structural reload rejection.
 - [x] **2.13.6:** end-to-end JSON integration verification milestone; build and commit reported successful. **Known invalid-pack diagnostic failure remains open.**
-- [ ] **2.14.1 — Dependency setup:** officially documented Create 6.0.10 target confirmed; Gradle/runtime installation and dev-world test pending.
+- [x] **2.14.1 — Dependency setup:** successful Gradle build, client launch and mod discovery in Create+ 6.0.0-alpha-f reported; precise modpack-internal Create/loader versions and in-world regression evidence remain to be captured.
 - [ ] **2.14.2–2.14.7 — Create achievements:** trusted machine events, attribution, kinetics, pressing, general processing, JSON campaign chapter and Create+ integration tests.
 - [ ] **2.15 — Networking and Quest Journal:** spoiler-filtered client state, structured ingredient checklists, hints, manual advancement and reward claims; replace noisy per-item chat feedback.
 - [ ] **Release hardening:** actionable invalid-pack errors (I-011), startup definition locking/migrations (P-003), full automated regression suite, security/permission checks, two-player verification (I-003), crash-recovery policy (P-005), debug-command gating.

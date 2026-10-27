@@ -413,13 +413,19 @@ These are agreed product rules; `[x]` below means **decision confirmed**, not ne
 
 ### I-013 — Create machinery ownership and player progress attribution
 
-**Status:** `[ ]` **P1** · **Scheduled: 2.14.2 before any automated machine objective**
+**Status:** `[~]` **P1** · **Policy agreed; implementation scheduled: 2.14.2 before automated machine objectives**
 
 **Problem:** Kinetic networks, presses and production lines may operate autonomously while their builder is elsewhere or offline. A nearest-player or item-holder heuristic cannot reliably identify whom to credit. Per-player quest state and server authority already exist, but there is no machine-to-player association policy.
 
-**Required decision:** Define explicit machine/installation association, trusted registration source, persistence, ownership transfer, dismantling/replacement, world/dimension boundaries, unloaded chunks, offline operation, and multiplayer permissions. Do not infer ownership solely from proximity. Do not grant credit to arbitrary players when attribution is ambiguous.
+**Agreed current policy (2.14.2): builder = owner.** Attribute supported machinery/installation ownership to the server-verified builder (initially one UUID). Do not use nearest-player or item-holder heuristics. The exact Create machine construction/placement hook and identity of multi-block installations must be verified before coding. When attribution is unreliable, do not credit an arbitrary player.
 
-**Acceptance:** On a server with registered machinery, a processed batch credits exactly the authorized intended campaign participant under the documented policy; reloading a world preserves the association; destroying/replacing a machine does not inherit stale rights. Two-player isolation is still unverified unless actually tested (I-003).
+**Agreed future cooperative policy (deferred):** Introduce an item providing a registered area of effect for a shared workshop. Any player registered with the area counts as an **owner**; **any owner** can open or close new registrations. All registered owners whose **own active quest** has a matching objective receive progress independently for the same verified qualifying operation. Unregistered players and owners on unrelated quests do not receive progress. Registration is an intentional membership action, not mere proximity. Do **not** implement the registration item during the initial 2.14.2 integration.
+
+**Architecture invariant now:** Treat ownership as a **set of player UUIDs** from the start, even when only the builder belongs to the set. Keep each owner's objective progress, advancement and rewards separate and server-authoritative. Deduplicate processing per event **per eligible player**; never introduce a single shared campaign-progress record.
+
+**Open implementation rules:** Define a stable installation identity; persistence/reconstruction across restarts; dismantling and replacement; owner changes and registration closure/revocation; overlapping area registration; world/dimension boundaries, chunks loading/unloading, offline members, automated block placement, spoofing and permission checks.
+
+**Acceptance for initial implementation:** A server-verified builder is the only initial owner and earns qualifying progress through the existing player-bound progression path; no nearby nonowner gets credit; restart and teardown semantics are tested. **Acceptance for future shared area:** For two registered owners on the matching active quest, one qualifying machine event advances both independently once; an unregistered player and a registered owner on a different quest receive no credit; any owner can open/close registration, and a nonowner cannot. **Two-player testing still pending** (I-003).
 
 ### I-014 — Create processing provenance, duplicate credit and high-frequency events
 
@@ -522,7 +528,7 @@ These are agreed product rules; `[x]` below means **decision confirmed**, not ne
    - **2.13.6:** end-to-end JSON scenario and three-quest test pack; build/commit reported complete. **Open observation:** `requiredAmount: 0` produced an opaque game failure (I-011); third-quest and optional-reward scenarios still need archived step-by-step evidence.
 3. **2.14 — Create engineering integration (NEXT; seven sub-milestones).**
    - **2.14.1 — Dependency/runtime baseline:** add official Create 6.0.10 Maven and required mod metadata, test dev client and verify actual Create+ profile; not yet implemented.
-   - **2.14.2 — Objective contracts and attribution:** trusted machine evidence, server authority, explicit player/machine association (I-013), JSON trigger extensions and duplicate policy (I-014).
+   - **2.14.2 — Objective contracts and attribution:** trusted machine evidence, server authority, server-verified builder ownership now; multi-owner area registration later (I-013), JSON trigger extensions and duplicate policy (I-014).
    - **2.14.3 — Kinetic power:** recognize a working rotational network, not a placed shaft/wheel.
    - **2.14.4 — Mechanical Press:** track completed pressing rather than Iron Sheet possession.
    - **2.14.5 — General processing/automation:** reusable millstone/crushing/mixing processing evidence, batches and deduplication.
@@ -541,7 +547,7 @@ These are agreed product rules; `[x]` below means **decision confirmed**, not ne
 - **World-save definition compatibility (P-003):** persist campaign revision/fingerprint and handle non-cosmetic JSON changes across server restarts; specify migration/backups or explicit rejection.
 - **Quest notification policy (I-012):** journal/HUD update cadence; optional one-time completion toast; developer-only verbose chat; normal server logs for errors, not routine item pickup spam.
 - **Create dependency version:** official 1.21.1 guide targets Create 6.0.10 with Maven `6.0.10-280`; confirm actual Create+ profile before relying on addon internals.
-- **Create ownership (I-013):** explicitly associate machinery with an authorized player; address offline processing, world restarts, removal and transfers before awarding autonomous production progress.
+- **Create ownership (I-013):** **decision reached:** builder is initial owner; future area-registration item makes all registered players owners and allows any owner to open/close registration; eligible owners receive independent progress only for matching active quests. **Implementation details remain:** registration persistence, overlap, teardown, offline progress, unknown builders and owner permissions.
 - **Create processing provenance (I-014):** detect successful completed operations, not block placement or item acquisition; avoid duplicate credit from overlapping events and high-frequency outputs.
 - **Create objective evidence:** automation and processing must be verified by trusted events and sustained operation where appropriate; choose recipe/process/transport/rotation semantics after checking real dependency versions.
 - **Pickup semantics:** current ground pickups only. Decide whether chest transfers, item grants, repeat drop/re-pickup and other inventories should count, and prevent unintentional farming if necessary.
@@ -564,5 +570,7 @@ These are agreed product rules; `[x]` below means **decision confirmed**, not ne
 | **2026-10-27** | **Updated through 2.13.6:** documented versioned JSON schemas, parser, manifest assembly, data-pack startup, safe cosmetic reload and manual integration tests; retained all 48 previous correction IDs and added **I-011** (invalid-pack diagnostic failure) and **I-012** (per-item quest chat spam); maintained two-player verification as pending and startup save-version lock as an open risk. |
 
 | **2026-10-27** | **Planned 2.14 Create integration:** preserved all 50 prior issue IDs; documented verified official Create 6.0.10/Maven dependency versions without claiming installation, detailed the seven implementation milestones, and added **I-013** (machine-to-player attribution) and **I-014** (processing provenance/duplicate credit). Kept I-011, I-012, startup migration, two-player tests and reward crash timing open. |
+
+| **2026-10-27** | **2.14.2 ownership decision:** builder = initial owner; design ownership as UUID set now. Future area-registration item supports many co-owners, owner-controlled registration, and independent same-quest progress. No multi-account test or implementation claimed. The 2.14.1 Gradle build and Create+ 6.0.0-alpha-f mod discovery were user-confirmed. |
 
 **Maintenance rule:** If work introduces an important deferred correction, add it to this guide with an acceptance test. Do not close an issue solely because compilation succeeds, and never mark a two-player or crash test as passed without running it.
