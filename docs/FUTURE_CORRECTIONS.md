@@ -1,12 +1,12 @@
 # The Age of Machinery — Future Corrections & Implementation Guide
 
 **Project:** The Age of Machinery  
-**Target:** Minecraft 1.21.1 · NeoForge 21.1.233 · Java 21 · official Create 6.0.10 integration target (dev setup unverified)  
+**Target:** Minecraft 1.21.1 · NeoForge 21.1.233 · Java 21 · Create 6.0.10 · Create+ 6.0.0-alpha-f  
 **Mod ID:** `theageofmachinery` · **Java package:** `com.TheAgeOfMachinery`  
-**Document:** Living engineering backlog and architecture decisions  
-**Last consolidated:** **27 October 2026 — 2.14 implementation plan and dependency research; 2.13.6 last completed milestone**
+**Document:** Living engineering backlog, risks, verification ledger and architecture decisions  
+**Last consolidated:** **27 October 2026 — through completed/committed 2.14.4; 2.14.5 NEXT**
 
-> **Status precision:** This ledger reflects developer-reported builds, commits and selected manual in-game checks; it is not an independent source audit or complete automated test report. Data-pack loading and text-only live reload are implemented, and screenshots confirmed both accepted cosmetic changes and rejected requirement changes. A test data pack with `"requiredAmount": 0` **reportedly caused a game failure without an actionable visible explanation**; the actual stack trace and startup-vs-live-reload circumstances have not been provided. This is an **open diagnostics/stability issue**, not a passing malformed-input test. Item pickups also produce frequent quest-progress chat messages; this is temporary until the Quest Journal is implemented. Official Create 6.0.10 / NeoForge 1.21.1 dependency coordinates are identified, but have **not** yet been integrated or build-tested in this project. **Two-player verification is PENDING / NOT TESTED.** Crash-atomic reward delivery and cross-restart definition compatibility are not established.
+> **Status precision:** Developer reports a successful 2.14.4 build, 100% test success and a Git commit. The source/commit SHA and complete test output were not independently inspected for this documentation update. 2.14.1–2.14.3 were also reported built and committed. The full Create+ development run through Gradle now works after a local Java-environment correction whose specific changes were not recorded. **Two real-player multiplayer, crash-atomic reward claims, cross-restart campaign migration, invalid JSON diagnostics, automated performance/stress coverage and all-recipe batch semantics remain unverified**. A completed milestone does not automatically close other pending release risks.
 
 ## How to maintain this guide
 
@@ -43,22 +43,22 @@ These are agreed product rules; `[x]` below means **decision confirmed**, not ne
 | **2.7.1–2.7.8** | `CampaignSavedData` NBT (`FormatVersion = 3`), quest/reward codecs | Normal restart restoration previously verified |
 | **2.8–2.9** | Authoritative saved state and coordinated advancement | Completion, optional reward and restart checks previously passed |
 | **2.10** | Staged updates, detached snapshots, revision/claim guards | Stale updates, reentrancy and failure-injection checks previously passed |
-| **2.11** | Per-server runtime, login initiation, player-bound/server-thread authority | Developer reports completed/committed; two-player test NOT performed |
-| **2.12.1–2.12.4** | Vanilla crafting/pickup events, event router, playable prototype scenarios | Builds/commits reported; some event edge-case logs still not independently available |
-| **2.13.1** | Versioned JSON schemas, ordered manifest, prototype data | Build and commit reported successful |
-| **2.13.2** | Strict JSON parser, Java model conversion, `QuestIngredient` metadata | Build and commit reported successful; nullability fix included |
-| **2.13.3** | Manifest-based assembler, reference/item registry checks | Build and commit reported successful |
-| **2.13.4** | Server data-pack loader feeding live `CampaignRuntime` | Build and commit reported successful; data-pack loading exercised |
-| **2.13.5** | Presentation-only compatible `/reload`, structural rejection | In-game screenshots showed **APPLIED** title override and **REJECTED** 16→32/32→16 requirement changes; code ultimately built |
-| **2.13.6** | End-to-end campaign/data-pack test milestone, third-quest fixture and invalid-JSON scenario | **Developer reports build and commit successful**; specific third-quest and optional-reward outcomes not independently supplied; `requiredAmount: 0` caused a failure without useful visible diagnostic |
+| **2.11** | Per-server runtime, login initialization, player/server-thread authority | Completed/committed; two-player test NOT performed |
+| **2.12.1–2.12.4** | Vanilla crafting/pickup events and active-quest router | Built/committed; some crafting/pickup edge cases remain |
+| **2.13.1–2.13.4** | JSON schemas, strict parser, ordered assembler and server data-pack loader | Builds/commits and data-pack activation reported |
+| **2.13.5** | Presentation-only compatible `/reload`, structural rejection | In-game accepted cosmetic and rejected quantity-change screenshots |
+| **2.13.6** | JSON quest/data-pack end-to-end scenarios | Built/committed; invalid `requiredAmount: 0` raised opaque failure (I-011) |
+| **2.14.1** | Create 6.0.10 dependency and Create+ development-runtime baseline | Completed; full-pack IDE `runClient` works after Java-environment correction |
+| **2.14.2** | Create machine events, builder registration/persistence, owner attribution, `KINETIC_ACTIVE` / `MACHINE_PROCESS` schema + routing | Built/committed as a development milestone; two-user test pending |
+| **2.14.3** | `CreateKineticMonitor` detects live running installed machines; `/tamkinetic inspect` | Built/tested/committed (developer report) |
+| **2.14.4** | Create 6.0.10 Mechanical Press Mixins for belt, world and basin; `ProcessingCompletedEvent` routed with machine ownership | **Build 100% successful, milestone tests 100% successful, committed (developer report)** |
+| **2.14.5** | Extend processing observation to Millstone, Crushing Wheels and Mixer, with batch and automation correctness | **NEXT; not implemented** |
+| **2.14.6–2.14.7** | Real Create quest chapter and full integration/regression | Planned |
+| **2.15** | Spoiler-safe network/UI, journal, ingredients, rewards and hints | Planned |
 
-**Next phase:** **2.14.1** integrates the verified Create 6.0.10 dependency and proves a functioning development setup. Create gameplay objectives remain unimplemented until subsequent milestones.
+**Working state:** A Minecraft server loads JSON data-pack quest definitions through a validated ordered manifest; `CampaignRuntime` and `CampaignSavedData` v3 own authoritative per-player progression. Existing `PICKUP_ITEM` / `CRAFT_ITEM` triggers work for prototype quests. Create machine installation ownership feeds trusted machine events into `CreateObjectiveRouter`. `CreateKineticMonitor` emits qualifying kinetic events; Mechanical Press hooks report actual item production from belt, world and basin paths. The full Create+ 6.0.0-alpha-f development instance launches via Gradle `runClient` after the user's Java environment fix.
 
-**Current state:** Minecraft server loads versioned JSON definitions (ordered campaign manifest, quests, ingredient checklists, rewards), parses and validates a complete campaign, then exposes it through one `CampaignRuntime` sharing `CampaignSavedData` v3. Gameplay `PICKUP_ITEM`/`CRAFT_ITEM` events match active objectives; advancement and reward claiming remain manual through operator commands until UI/network integration. `/reload` accepts presentation-only changes and refuses incompatible structural changes during the current server session.
-
-**Known limitations:** The current session's reload validator **does not enforce cross-restart safety** for existing saves; a structurally different pack can take effect after restarting a world. Malformed pack failure messaging needs explicit remediation (I-011); matching item pickups currently spam chat/system notifications (I-012). Multiplayer with two connected accounts remains untested; bulk/shift-click crafting and other pickup pathways require regression coverage; exact-once crash-safe reward delivery is not established.
-
----
+**Known limits:** In-session structural `/reload` rejection is not world-restart schema locking. Malformed campaign diagnostics (I-011), chat spam (I-012), two-player testing (I-003), automated test depth (I-004), robust processing idempotency/output provenance (I-014), reward crash atomicity (P-005) and generalization to non-press machines remain open. Create+ launch issue was fixed externally; preserve the local setup rather than attempting the prior speculative Connector workaround.
 
 ## 3. Quest advancement, authority and persistence
 
@@ -202,7 +202,7 @@ These are agreed product rules; `[x]` below means **decision confirmed**, not ne
 
 **Status:** `[~]` **P1**
 
-**Current evidence:** JSON parser validates resource identifiers; `ObjectiveTrigger` uses `ResourceLocation`; router compares actual registry item IDs, while assembly checks registered item targets, rewards and ingredient items. JSON IDs for the original two quests/objectives/rewards were preserved. Item tags are checked during active data-pack loading. Quest/objective/reward identity is still stored by stable strings.
+**Current evidence:** JSON parser validates resource identifiers; `ObjectiveTrigger` uses `ResourceLocation`; vanilla routing matches registered item IDs and Create routing now matches machine block IDs, output item IDs and kinetic minimum-speed criteria. Assembly validates quest targets and reward/ingredient items; the original stable quest/objective/reward IDs were preserved. Item tags are checked during data-pack loading.
 
 **Remaining / acceptance:** Test missing optional Create registries, changed/deleted resource IDs, malformed pack failures (I-011), old world migration (P-003) and legacy reward identifiers. A valid-looking registry ID is not proof its mod is installed.
 
@@ -210,9 +210,9 @@ These are agreed product rules; `[x]` below means **decision confirmed**, not ne
 
 **Status:** `[~]` **P1**
 
-**Current evidence:** `QuestObjective` supports trigger and structured ingredient metadata; legacy four-/five-argument constructors are retained. `MANUAL`, `CRAFT_ITEM` and `PICKUP_ITEM` are parsed from JSON and routed via current-quest `CampaignObjectiveRouter`. Built-in game events identify crafting output and successful ground pickups; the optional Furnace objective is connected.
+**Current evidence:** `QuestObjective` supports structured ingredient metadata and trigger definitions. The vanilla `MANUAL`, `CRAFT_ITEM` and `PICKUP_ITEM` types are parsed from JSON and routed through `CampaignObjectiveRouter`. Milestone 2.14.2 added Create `KINETIC_ACTIVE` and `MACHINE_PROCESS` objective triggers with machine ID, minimum RPM or output item ID, routed through `CreateObjectiveRouter`. Real live kinetic and Mechanical Press processing events are now implemented in 2.14.3–2.14.4.
 
-**Remaining / acceptance:** Verify bulk/shift-click crafts, partial pickups, duplicate pickup semantics, and the third-quest Chest event in a recorded run. Define trustworthy Create-specific event types in 2.14 rather than accepting item possession as proof of machinery automation.
+**Remaining / acceptance:** Verify bulk/shift-click crafts, partial pickups, duplicate pickup semantics and the historical third-quest Chest fixture in a recorded run. Extend the existing Create trigger model to newly supported machines in 2.14.5 and prove actual output amounts rather than accepting item possession as evidence of machinery automation (I-014).
 
 ### D-004 — Campaign ordering and registration guarantees
 
@@ -312,19 +312,19 @@ These are agreed product rules; `[x]` below means **decision confirmed**, not ne
 
 ### I-001 — NeoForge 1.21.1 and Create+ version compatibility
 
-**Status:** `[~]` **P1**
+**Status:** `[~]` **P1** — working development integration; release/server compatibility still needs verification.
 
-**Current evidence:** The project targets Minecraft 1.21.1, NeoForge 21.1.233, Java 21. The **official Create NeoForge 1.21.1 addon guide** specifies **Create 6.0.10** (Maven version `6.0.10-280`), Ponder `1.0.82`, Flywheel `1.0.6`, Registrate `MC1.21-1.3.0+67`, plus a required production dependency range `[6.0.10,6.1.0)`. Official reference: https://wiki.createmod.net/developers/depend-on-create/neoforge-1.21.1. This is **documentation verification only**, not a report that these dependencies are already installed or that Create+ has been tested.
+**Current evidence:** Minecraft 1.21.1, NeoForge 21.1.233 and Java 21 target. The official Create dependency target is 6.0.10 (Maven `6.0.10-280`) with Ponder 1.0.82, Flywheel 1.0.6 and Registrate `MC1.21-1.3.0+67`. The full Create+ modpack (6.0.0-alpha-f) runs via isolated Gradle `runClient` and supports IDE source debugging after a separate agent fixed a **Java-environment issue**. Earlier `forgeclientdev` / Sinytra Connector `Could not determine clean minecraft artifact path` failures are historical troubleshooting, **not a current open blocker**. The details of the external Java fix were not captured in this record.
 
-**Remaining / acceptance:** Milestone 2.14.1: integrate dependencies into this project's Gradle + NeoForge mod metadata, build, run a dev client with Create present, operate a small powered mechanism, and regression-test the existing JSON campaign. Inspect the actual installed Create version and supporting mods in the user's Create+ profile; verify separately in that profile and eventually on a server before claiming modpack compatibility. Pin dependency versions rather than assume the latest Maven snapshot is a release-equivalent artifact.
+**Remaining / acceptance:** Preserve working `build.gradle`, `settings.gradle`, JDK/Gradle options and `run-createplus` task setup; record the exact Java resolution for onboarding and CI. Verify a clean checkout, a dedicated server and the distribution JAR against the actual modpack. Keep the original Modrinth profile untouched; do not substitute manual JAR copying for full Gradle development.
 
 ### I-002 — Detect real Create engineering achievements
 
-**Status:** `[ ]` **P1**
+**Status:** `[~]` **P1** — 2.14.3 kinetic and 2.14.4 Mechanical Press completed; other machines and sustained automation pending.
 
-**Current evidence:** Vanilla crafting and pickup objectives are now functional through 2.12. No Create processing, machines, networks, contraptions or functional engineering milestones are detected yet.
+**Current evidence:** `KINETIC_ACTIVE` and `MACHINE_PROCESS` trigger contracts exist. `CreateKineticMonitor` checks registered kinetic installations approximately every 10 server ticks and routes valid `KineticPowerEvent` events; press Mixins capture actual belt/world/basin item production and send `ProcessingCompletedEvent` through the ownership router. The developer reports 2.14.4 built, fully tested and committed.
 
-**Remaining / acceptance:** Follow 2.14.2–2.14.7: define event/provenance and player-credit policy, detect powered rotation, verify successful pressing, extend to other processing and repeated automated operations, then test the Create-focused JSON quest chapter. Avoid interpreting block placement or item possession as proof of a functional machine. See I-013 and I-014.
+**Remaining / acceptance:** 2.14.5 implements Millstone, Crushing Wheels and Mechanical Mixer with accurate quantities and distinct callbacks. 2.14.6–2.14.7 create a production-focused JSON chapter and verify power loss, bulk batches, restarts, multi-machine throughput, output side effects and modpack compatibility. Item possession or machine placement still cannot count as successful processing. See I-013 and I-014.
 
 ### I-003 — Multiplayer/session isolation
 
@@ -354,9 +354,9 @@ These are agreed product rules; `[x]` below means **decision confirmed**, not ne
 
 **Status:** `[~]` **P1**
 
-**Current evidence:** README and this ledger are updated through 2.13.6. The developer reports successful builds and commits for JSON schema/parser/assembler, startup loader, safe reload and final testing milestone. Screenshots show accepted cosmetic and rejected structural live reload. New observations for invalid-pack error feedback and frequent pickup announcements are recorded as I-011 and I-012.
+**Current evidence:** README and this ledger are now updated through 2.14.4 (using the 2.14.2 documentation snapshot plus reported newer milestones). The developer reports successful builds and commits for JSON schema/parser/assembler, startup loader, safe reload and final testing milestone. Screenshots show accepted cosmetic and rejected structural live reload. New observations for invalid-pack error feedback and frequent pickup announcements are recorded as I-011 and I-012.
 
-**Remaining / acceptance:** Collect reproducible logs (including invalid-pack stack trace), example screenshots/video, a validated third-quest test report, exact Create dependencies/install instructions and release criteria. Keep build success distinct from verified game behavior.
+**Remaining / acceptance:** Collect reproducible logs (including invalid-pack stack trace), example screenshots/video, committed 2.14.4 test evidence, the exact external Java fix for full Create+ development, clean-checkout/server install instructions and release criteria. Keep build success distinct from verified game behavior.
 
 ### I-007 — Automatic crafting event tracking
 
@@ -380,7 +380,7 @@ These are agreed product rules; `[x]` below means **decision confirmed**, not ne
 
 **Current evidence:** 2.12.3 introduced `ObjectiveTriggerType`, `ObjectiveTrigger` with validated registry identifier, five-argument `QuestObjective` plus compatible four-argument constructor, and `CampaignObjectiveRouter`. Crafting and pickup event adapters no longer hardcode quest/item IDs. The active quest alone is evaluated; matching objectives use the shared `CampaignRuntime` update path.
 
-**Remaining / acceptance:** Item-event routing for the existing prototype is implemented. New Create event types, JSON schema/parser validation and edge-case tests remain independently tracked in D-001, D-003, I-007 and I-008.
+**Remaining / acceptance:** The vanilla active-quest item-event router is implemented. A separate Create event router with `KINETIC_ACTIVE` and `MACHINE_PROCESS` exists as of 2.14.2; general multi-machine provenance, edge-case/automated tests and count semantics remain tracked in D-003, I-002, I-014 and I-015.
 
 ### I-010 — Playable vertical-slice verification
 
@@ -413,30 +413,41 @@ These are agreed product rules; `[x]` below means **decision confirmed**, not ne
 
 ### I-013 — Create machinery ownership and player progress attribution
 
-**Status:** `[~]` **P1** · **Policy agreed; implementation scheduled: 2.14.2 before automated machine objectives**
+**Status:** `[~]` **P1** — initial builder-as-owner implementation complete; cooperative area registration and two-player tests deferred.
 
-**Problem:** Kinetic networks, presses and production lines may operate autonomously while their builder is elsewhere or offline. A nearest-player or item-holder heuristic cannot reliably identify whom to credit. Per-player quest state and server authority already exist, but there is no machine-to-player association policy.
+**Implemented (2.14.2):** Persist a stable machine installation/position association with the server-verified placing player's UUID as initial owner. `MachineOwnershipRegistry` and `MachineOwnershipSavedData` manage registration/persistence; `MachineLocation` identifies position/dimension; `CreateEventAttribution` validates the recorded installation and resolves the **set of owner UUIDs**, and `CreateObjectiveRouter` matches each owner's own currently active quest. The existing server-authored commands `/tamowner` and `/tamcreate` support diagnosis and synthetic event tests. Do not use nearest-player, item-holder or output collector heuristics.
 
-**Agreed current policy (2.14.2): builder = owner.** Attribute supported machinery/installation ownership to the server-verified builder (initially one UUID). Do not use nearest-player or item-holder heuristics. The exact Create machine construction/placement hook and identity of multi-block installations must be verified before coding. When attribution is unreliable, do not credit an arbitrary player.
+**Current ownership policy:** Machine ownership is independent from quest/reward state and can contain multiple UUIDs internally, even when the first stage normally registers one builder. Each qualifying owner independently receives progress when their active objective matches; do not advance future quests or use a shared global counter. Unknown/unregistered machines do not receive arbitrary credit. Ownership teardown/replacement and chunk/world lifecycle behavior deserve repeated regression during 2.14.7.
 
-**Agreed future cooperative policy (deferred):** Introduce an item providing a registered area of effect for a shared workshop. Any player registered with the area counts as an **owner**; **any owner** can open or close new registrations. All registered owners whose **own active quest** has a matching objective receive progress independently for the same verified qualifying operation. Unregistered players and owners on unrelated quests do not receive progress. Registration is an intentional membership action, not mere proximity. Do **not** implement the registration item during the initial 2.14.2 integration.
+**Agreed future cooperative feature (deferred):** A registration item establishes a shared bounded workshop area. Any registered player becomes an owner; **any owner** can open/close registration. Credit goes to each eligible registered owner only if their currently active quest contains a matching objective. Registration is intentional and not inferred from proximity. Design overlaps, owner removal, closure, permission enforcement, offline owner progress, unloaded chunks and multi-block installations explicitly.
 
-**Architecture invariant now:** Treat ownership as a **set of player UUIDs** from the start, even when only the builder belongs to the set. Keep each owner's objective progress, advancement and rewards separate and server-authoritative. Deduplicate processing per event **per eligible player**; never introduce a single shared campaign-progress record.
-
-**Open implementation rules:** Define a stable installation identity; persistence/reconstruction across restarts; dismantling and replacement; owner changes and registration closure/revocation; overlapping area registration; world/dimension boundaries, chunks loading/unloading, offline members, automated block placement, spoofing and permission checks.
-
-**Acceptance for initial implementation:** A server-verified builder is the only initial owner and earns qualifying progress through the existing player-bound progression path; no nearby nonowner gets credit; restart and teardown semantics are tested. **Acceptance for future shared area:** For two registered owners on the matching active quest, one qualifying machine event advances both independently once; an unregistered player and a registered owner on a different quest receive no credit; any owner can open/close registration, and a nonowner cannot. **Two-player testing still pending** (I-003).
+**Remaining / acceptance:** Confirm save/restart, dimension separation, unknown-builder placement, break/replacement, chunk unload and fake/detached BlockEntity scenarios. **Two simultaneous real-user verification remains pending:** two owners on the same relevant quest receive independent credit exactly once, nonowners receive none, and owners on unrelated quests receive none (I-003). No existing single-user test closes that requirement.
 
 ### I-014 — Create processing provenance, duplicate credit and high-frequency events
 
-**Status:** `[ ]` **P1** · **Scheduled: 2.14.2–2.14.5**
+**Status:** `[~]` **P1** — real Mechanical Press belt/world/basin item outputs implemented and developer-reported tests pass; wider correctness not complete.
 
-**Problem:** A collected Create item or placed machine does not prove successful mechanical processing. Multiple mod hooks, output inventories and ground pickups might report the same physical operation; an automated production line could generate very frequent callbacks.
+**Implemented (2.14.4):** Mixins against Create 6.0.10 report successful belt processing (`tryProcessOnBelt`, nonsimulated output list), loose-world-item pressing (`onItemPressed`), and successful basin item output acceptance with press-specific context (`BasinBlockEntity.acceptOutputs`). `MechanicalPressProcessingBridge` validates server/current installed machine and groups produced item quantities into `ProcessingCompletedEvent` entries; `CreateObjectiveRouter` attributes only to registered matching owners. Belt handling avoids counting both belt result and Create's `onItemPressed` callback. User reports successful build, 100% tests and commit.
 
-**Required decision:** Inspect actual Create 6.0.10 APIs for trusted processing completion evidence; define machine/recipe/output/amount context, batch semantics, count point, idempotency window and overflow/capping. Prefer event-driven verification over unbounded block-entity polling. Keep quest chat feedback separate from machine processing (I-012).
+**Open edges/risks:**
 
-**Acceptance:** A real powered machine operation increments one eligible active objective exactly once; unpowered or canceled processing, `/give`, pre-made items and pickup of a machine output do not count as processing. Bulk batches and world reloads have documented behavior. No progress is awarded to future quests.
+- **Operation identity:** The 2.14.4 code initially supplied constructed `UUID.randomUUID()` for each emitted output event. Session deduplication of event IDs cannot prevent two independent callbacks about the *same physical operation* from having different IDs. Before promising exactly-once operation semantics, inspect the final committed code and design stable per-operation identity or unequivocal single emission points.
+- **Basin safety:** The supplied bridge tracked the active press with a `ThreadLocal` set by `tryProcessInBasin` HEAD and removed at RETURN, not in `try/finally`. Exception/nested-call cleanup and overlapping basin operations require inspection or a safer scope design. Confirm current committed code before changing it.
+- **Output fidelity:** Loose-world-item `onItemPressed` reports a primary output; verify byproducts, recipe chance outputs, consumed items and empty lists. Basin output acceptance and actual successful transfer may differ; inspect Create internals before asserting final delivered counts.
+- **Batch/replay:** Test bulk stack sizes, multiple output types, rapid cycles, save/restart around operation boundaries, aborted processing, config switches, high throughput and stress changes without double counting or missed events.
+- **Credit boundaries:** Fabric/NeoForge addons may alter Create recipes, inventories or callbacks. Item pickup, `/give`, machine placement and simulated processing must not be reported as machine completion. Keep chat-notification volume tracked separately in I-012.
 
+**2.14.5 acceptance:** Establish machine-specific authoritative recipe success points for Millstone, Crushing Wheels and Mechanical Mixer, normalize output quantity semantics, avoid a second progress engine, prove machine owner isolation, and write explicit acceptance tests for automation/batches. Preserve server-thread checks and no-unloaded-chunk world access.
+
+### I-015 — Press-to-general-processing integration robustness
+
+**Status:** `[ ]` **P1** — technical review before treating the processing bridge as a reusable abstraction in 2.14.5.
+
+**Problem:** Generalizing 2.14.4 by copying Mixins and callbacks risks leaking basin context, reporting canceled/failed recipes, or counting multiple output types with overlapping event IDs. The source of truth for processing completion varies among Create machines.
+
+**Required approach:** Before refactoring, inspect the **committed** `MechanicalPressProcessingBridge`, `MechanicalPressBlockEntityMixin`, `BasinBlockEntityMixin` and Mixins configuration. Define a shared immutable success-event payload only after verifying Create 6.0.10 execution points. Keep press behavior stable under regression while adding new machine-specific adapters. Choose a scope-safe basin attribution mechanism (including `try/finally` if appropriate), explicit output counts, and trustworthy operation identity. Do not assume a Java `ThreadLocal` automatically provides lifecycle cleanup.
+
+**Acceptance:** The existing 2.14.4 press tests remain green, new machines produce correct counts once, no failed/simulated output is reported, and no stale press/mixer basin context crosses callbacks. Review this issue together with I-014; do not prematurely claim it closed based only on a build.
 
 ---
 
@@ -518,38 +529,30 @@ These are agreed product rules; `[x]` below means **decision confirmed**, not ne
 
 ## 9. Updated delivery sequence
 
-1. **2.12 — Vanilla Minecraft gameplay events: completed as development milestones.** Crafting, successful ground pickups and active-quest objective routing are wired to the server runtime. Edge cases (shift-click crafts, non-ground acquisitions) are still tracked.
-2. **2.13 — JSON/data-pack campaigns: developer reports complete through 2.13.6.**
-   - **2.13.1:** versioned JSON schema, explicit manifest order, rewards and structured ingredients.
-   - **2.13.2:** strict JSON parsing to existing quest/reward models; compatible `QuestObjective` constructors.
-   - **2.13.3:** resolve all manifest entries and item registries before assembling an immutable candidate.
-   - **2.13.4:** load the active server data packs during startup rather than using Java `BuiltInCampaign` definitions; preserve saved IDs.
-   - **2.13.5:** accept only presentation/text changes in a running server session. Screenshots verified title update (`APPLIED`) and rejected 16↔32 quantity changes (`REJECTED`).
-   - **2.13.6:** end-to-end JSON scenario and three-quest test pack; build/commit reported complete. **Open observation:** `requiredAmount: 0` produced an opaque game failure (I-011); third-quest and optional-reward scenarios still need archived step-by-step evidence.
-3. **2.14 — Create engineering integration (NEXT; seven sub-milestones).**
-   - **2.14.1 — Dependency/runtime baseline:** add official Create 6.0.10 Maven and required mod metadata, test dev client and verify actual Create+ profile; not yet implemented.
-   - **2.14.2 — Objective contracts and attribution:** trusted machine evidence, server authority, server-verified builder ownership now; multi-owner area registration later (I-013), JSON trigger extensions and duplicate policy (I-014).
-   - **2.14.3 — Kinetic power:** recognize a working rotational network, not a placed shaft/wheel.
-   - **2.14.4 — Mechanical Press:** track completed pressing rather than Iron Sheet possession.
-   - **2.14.5 — General processing/automation:** reusable millstone/crushing/mixing processing evidence, batches and deduplication.
-   - **2.14.6 — Create chapter:** Create-focused JSON quest content with optional engineering challenges, recipe ingredients and manual advancement.
-   - **2.14.7 — Integration verification:** real Create machinery, invalid/unpowered cases, restart, rewards and Create+ profile; note two-player test as pending until performed.
-4. **2.15 — Spoiler-safe networking + Quest Journal.** Only synchronize permitted active/completed quest data and earned reward claims; add ingredient checklists, three hint levels, player-driven manual advancement/claiming, and **remove/gate per-item chat updates (I-012)**.
-5. **Release gates:** invalid JSON diagnostic reliability (I-011), save definition version locking and controlled migrations (P-003), crash-safe reward recovery (P-005), automated tests (I-004), two-player isolation (I-003, still pending), debug-command restrictions (P-006), packaging, install instructions and Create+ compatibility.
+1. **2.12 — Vanilla gameplay events (done as development milestones):** Crafting and successful ground pickup feed the active quest. Shift-click/bulk crafting and broader acquisition semantics remain separately tracked.
+2. **2.13 — JSON/data-pack campaigns (completed 2.13.6):** Versioned schemas, strict parser, ordered validated assembly, server data packs and presentation-only in-session reload. Startup-invalid JSON diagnostics (I-011) and save definition compatibility across restarts (P-003) remain open.
+3. **2.14.1–2.14.4 — Create integration (completed/committed by developer report):**
+   - **2.14.1:** Create 6.0.10 dependencies, full Create+ 6.0.0-alpha-f isolated Gradle dev client; original Java launch blocker resolved by external agent.
+   - **2.14.2:** MachineLocation/installation identity, builder registration/persistence, per-owner attribution, kinetic/processing event contracts and JSON triggers; routing/synthetic event test commands.
+   - **2.14.3:** Server-side live kinetic monitoring; working/stressed/stationary distinctions; `/tamkinetic inspect`.
+   - **2.14.4:** Mechanical Press real belt, loose-world-item and basin item-output callbacks; progress through existing routing; developer reports 100% tests and commit.
+4. **2.14.5 — Additional processing/automation (NEXT):** Millstone, Crushing Wheels, Mechanical Mixer. Inspect exact Create 6.0.10 code before choosing hooks; capture output item and quantity for *successful* operations, deduplicate operation provenance, handle batches and byproducts, and avoid extra inventory polling. Keep all 2.14.4 press regressions green; resolve or explicitly record I-014/I-015 edges.
+5. **2.14.6 — Create quest chapter:** Author actual survival Create quest progress in JSON/data packs with first-use required ingredients, optional mechanical achievements, safe manual advancement and earned XP/item rewards. For schema or datapack edits, provide the **complete final `quest.schema.json` plus a ready-to-install full ZIP**, not isolated fragments.
+6. **2.14.7 — Integrated Create+ tests:** Powered vs unpowered, overstressed/reverse rotation, machine ownership, processing outputs, multiple simultaneous machines, restart/rejoin, malformed definitions, quest optional handling/rewards and production profile. Two-account tests remain a separate explicit gate until available.
+7. **2.15 — Journal and networking:** Spoiler-safe player-visible quest state, ingredient checklist with quantities, three hints, manual advancement/claim UI and no per-item chat flood (I-012).
+8. **Release gates:** I-011 malformed input feedback, P-003 save definition migrations, P-005 crash-safe rewards, I-003 two-player isolation, I-004 automated tests, P-006 debug command protection and documented full-pack compatibility.
 
-**Important:** 2.13's implementation and local live-reload tests are not a claim that startup invalid data or structurally changed world saves are safe. Unsupported definitions must fail clearly, not be silently accepted; currently the error display needs improvement.
-
----
+**Development constraint:** preserve direct IDE/debuggable Gradle `runClient` using isolated `run-createplus`. Avoid reintroducing manual JAR-to-Modrinth testing as the required development workflow. The exact externally fixed Java setting is unknown here; inspect project-local JDK/Gradle configuration before touching runtime setup.
 
 ## 10. Unresolved design decisions
 
 - **Invalid pack diagnostics (I-011):** determine whether the `requiredAmount: 0` failure occurs at startup, during live reload or both; capture `latest.log` and stack trace; design actionable resource/field/value messages and keep running state intact on reload rejection.
 - **World-save definition compatibility (P-003):** persist campaign revision/fingerprint and handle non-cosmetic JSON changes across server restarts; specify migration/backups or explicit rejection.
 - **Quest notification policy (I-012):** journal/HUD update cadence; optional one-time completion toast; developer-only verbose chat; normal server logs for errors, not routine item pickup spam.
-- **Create dependency version:** official 1.21.1 guide targets Create 6.0.10 with Maven `6.0.10-280`; confirm actual Create+ profile before relying on addon internals.
+- **Create dependency version and development reproducibility (I-001):** official 1.21.1 guide targets Create 6.0.10 with Maven `6.0.10-280`. Full Create+ Gradle launch works locally following an externally made Java environment fix; record exact setting and verify on a clean checkout and dedicated server.
 - **Create ownership (I-013):** **decision reached:** builder is initial owner; future area-registration item makes all registered players owners and allows any owner to open/close registration; eligible owners receive independent progress only for matching active quests. **Implementation details remain:** registration persistence, overlap, teardown, offline progress, unknown builders and owner permissions.
-- **Create processing provenance (I-014):** detect successful completed operations, not block placement or item acquisition; avoid duplicate credit from overlapping events and high-frequency outputs.
-- **Create objective evidence:** automation and processing must be verified by trusted events and sustained operation where appropriate; choose recipe/process/transport/rotation semantics after checking real dependency versions.
+- **Create processing provenance (I-014/I-015):** press belt/world/basin output observation is implemented; generalize to Millstone/Crushing Wheels/Mixer with verified completion hooks, batch counts, stable operation identity and exception-safe basin context. Avoid duplicate credit from overlapping events or pickups.
+- **Create objective evidence:** kinetic activity and the Mechanical Press are implemented; new automation must be verified by trusted recipe/output events and appropriate sustained operation in Create 6.0.10 rather than inferred from item possession.
 - **Pickup semantics:** current ground pickups only. Decide whether chest transfers, item grants, repeat drop/re-pickup and other inventories should count, and prevent unintentional farming if necessary.
 - **Crafting semantics:** ensure output count and shift-click/rapid recipe handling do not double-count.
 - **Reward durability:** Minecraft XP/items and campaign `SavedData` are not a crash-safe single transaction; define a pending/review state or other recovery policy before promising exactly-once delivery.
@@ -568,9 +571,8 @@ These are agreed product rules; `[x]` below means **decision confirmed**, not ne
 | **2026-10-26** | **Updated through 2.11.6:** retained all 43 historical IDs, refreshed implementation/verification states after 2.7.8–2.11.6, recorded auto-login, unified runtime, staged/revision-checked persistence and failure tests; explicitly marked **two-player testing pending**; added event-routing tasks I-007–I-010 and API-boundary follow-up P-009; prioritized the 2.12 gameplay vertical slice. |
 | **2026-10-26** | **Updated through 2.12.4:** documented vanilla crafting/pickup events and objective trigger routing, revised I-007–I-010 and D-002–D-005 without renumbering existing issues, separated build/commit confirmation from missing detailed test logs, and added the six-step 2.13 JSON/data-pack roadmap and reload/save compatibility criteria. Two-player verification remains pending. |
 | **2026-10-27** | **Updated through 2.13.6:** documented versioned JSON schemas, parser, manifest assembly, data-pack startup, safe cosmetic reload and manual integration tests; retained all 48 previous correction IDs and added **I-011** (invalid-pack diagnostic failure) and **I-012** (per-item quest chat spam); maintained two-player verification as pending and startup save-version lock as an open risk. |
-
 | **2026-10-27** | **Planned 2.14 Create integration:** preserved all 50 prior issue IDs; documented verified official Create 6.0.10/Maven dependency versions without claiming installation, detailed the seven implementation milestones, and added **I-013** (machine-to-player attribution) and **I-014** (processing provenance/duplicate credit). Kept I-011, I-012, startup migration, two-player tests and reward crash timing open. |
-
 | **2026-10-27** | **2.14.2 ownership decision:** builder = initial owner; design ownership as UUID set now. Future area-registration item supports many co-owners, owner-controlled registration, and independent same-quest progress. No multi-account test or implementation claimed. The 2.14.1 Gradle build and Create+ 6.0.0-alpha-f mod discovery were user-confirmed. |
+| **2026-10-27** | **Updated through 2.14.4:** 2.14.2 contracts/ownership, 2.14.3 live kinetic monitoring and 2.14.4 Mechanical Press observation marked completed on developer report (successful build, 100% tests, committed). Recorded restored full Create+ Gradle debug workflow and external Java fix; made 2.14.5 next. Refreshed I-001, I-002, I-013, I-014, added I-015 for cross-machine processing bridge robustness; preserved other issue IDs and open multiplayer/crash/schema risks. |
 
 **Maintenance rule:** If work introduces an important deferred correction, add it to this guide with an acceptance test. Do not close an issue solely because compilation succeeds, and never mark a two-player or crash test as passed without running it.
