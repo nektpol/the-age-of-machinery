@@ -7,10 +7,12 @@ import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.block.state.BlockState;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -81,4 +83,14 @@ public final class MachineOwnershipRegistry
         MachineLocation location = new MachineLocation(level.dimension(), position);
         return MachineOwnershipSavedData.get(level.getServer()).unregisterInstallation(location, expectedInstallationId);
     }
+
+    public static List<MachineOwnership> getInstallationsSnapshot(MinecraftServer server)
+    {
+        Objects.requireNonNull(server, "Minecraft server cannot be null.");
+
+        if (!server.isSameThread()) throw new IllegalStateException("Machine ownership must be accessed on the server thread.");
+
+        return MachineOwnershipSavedData.get(server).getInstallationsSnapshot();
+    }
+
 }

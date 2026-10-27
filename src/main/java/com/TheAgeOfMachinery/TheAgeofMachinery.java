@@ -34,6 +34,8 @@ import com.TheAgeOfMachinery.create.ownership.MachineOwnershipTestCommand;
 import com.TheAgeOfMachinery.create.ownership.MachineOwnershipEvents;
 import com.TheAgeOfMachinery.create.CreateObjectiveRouter;
 import com.TheAgeOfMachinery.create.CreateObjectiveTestCommand;
+import com.TheAgeOfMachinery.create.CreateKineticMonitor;
+import com.TheAgeOfMachinery.create.CreateKineticStatusCommand;
 
 import net.neoforged.neoforge.common.NeoForge;
 
@@ -79,6 +81,8 @@ public class TheAgeofMachinery
         NeoForge.EVENT_BUS.addListener(MachineOwnershipEvents::onServerStopped);
         NeoForge.EVENT_BUS.addListener(CreateObjectiveTestCommand::register);
         NeoForge.EVENT_BUS.addListener(CreateObjectiveRouter::onServerStopped);
+        NeoForge.EVENT_BUS.addListener(CreateKineticMonitor::onServerTick);
+        NeoForge.EVENT_BUS.addListener(CreateKineticStatusCommand::register);
     }
 }
 
