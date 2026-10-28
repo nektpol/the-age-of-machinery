@@ -275,6 +275,20 @@ tasks.register('processingRegression', JavaExec) {
 tasks.named('check') {
     dependsOn tasks.named('processingRegression')
     dependsOn tasks.named('campaignRegression')
+    dependsOn tasks.named('playerViewRegression')
+}
+
+tasks.register('playerViewRegression', JavaExec) {
+    dependsOn tasks.named('campaignRegressionClasses')
+    classpath = sourceSets.campaignRegression.runtimeClasspath
+    mainClass = 'com.TheAgeOfMachinery.runtime.PlayerCampaignViewRegression'
+    workingDir layout.buildDirectory.dir('playerViewRegressionRun')
+    doFirst {
+        workingDir.mkdirs()
+    }
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
 }
 
 tasks.register('campaignRegression', JavaExec) {

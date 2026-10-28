@@ -23,20 +23,25 @@
 
 ### 2.14 — Objective Event Integration
 - [x] 2.14.1 — Create Dependency and Development Environment
-- [ ] 2.14.2 — Create Objective Contracts and Attribution Rules
-- [x] -- 2.14.2.1 — Define server-side Create event types and immutable event records
-- [x] -- 2.14.2.2 — Design persistent machine ownership and registration
-- [x] -- 2.14.2.3 — Automatic Machine Ownership
-- [ ] -- 2.14.2.4 — Extend objective trigger JSON with validated Create-specific fields
-- [ ] -- 2.14.2.5 — Verify routing, duplicate prevention and ownership isolation with simulated events
-- [ ] 2.14.3 — Kinetic Power Detection
-- [ ] 2.14.4 — First Mechanical Processing Objective
-- [ ] 2.14.5 — Generic Machine Processing and Automation
-- [ ] 2.14.6 — Create Campaign Content and Progression
-- [ ] 2.14.7 — End-to-End Create Integration Verification
+- [x] 2.14.2 — Create Objective Contracts and Attribution Rules
+- [x] 2.14.2.1 — Define server-side Create event types and immutable event records
+- [x] 2.14.2.2 — Design persistent machine ownership and registration
+- [x] 2.14.2.3 — Automatic Machine Ownership
+- [x] 2.14.2.4.1 — Resolve owners for machine events
+- [x] 2.14.2.4.2 — Create Objective Definitions, Matching and Routing
+- [x] 2.14.3 — Kinetic Power Detection
+- [x] 2.14.4 — First Mechanical Processing Objective
+- [x] 2.14.5 — Generic Machine Processing and Automation (basic in-world progress confirmed by user, 2026-10-28)
+- [x] 2.14.6 — Campaign-system fixture and progression smoke test (user confirmed, 2026-10-28; final campaign design deferred)
+- [x] 2.14.7 — Basic Create integration checkpoint accepted (ownership confirmed by user, 2026-10-28; new restart/multiplayer checks remain unverified)
 
 ### 2.15 — Client Synchronization and Visibility
-- [ ] Send only authorized active quest data, completed history, and unlocked rewards to clients.
+- [x] 2.15.1 — Authorized Player State Model: active quest, objective progress, ingredient quantities, completed history and earned rewards; exclude future quests and unearned rewards. Completed; automatic checks passed, accepted for commit without a manual game test.
+- [ ] 2.15.2 — Server-to-Client Synchronization: send the player's authorized state on join/rejoin and after relevant changes.
+- [ ] 2.15.3 — Client Action Requests: server-validated Advance and Claim requests bound to the packet sender; no client-supplied progress or target UUID.
+- [ ] 2.15.4 — Client State Consistency: apply revisions, handle stale state/action results and clear cached state when leaving a world.
+- [ ] 2.15.5 — Restrained Progress Feedback: replace per-item chat spam with state updates and one-time completion feedback; keep administrator diagnostics.
+- [ ] 2.15.6 — Practical Synchronization Tests: check authorized visibility, progress updates, advance/claim, duplicate rejection and reconnect using small fixtures. Two-account testing remains a separate gate until available.
 
 ### 2.16 — Quest and Reward UI
 - [ ] Implement the player-facing journal, ingredient lists, manual advancement, and reward claiming.

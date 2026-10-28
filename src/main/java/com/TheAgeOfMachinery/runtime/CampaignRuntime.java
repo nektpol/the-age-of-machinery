@@ -11,6 +11,7 @@ import com.TheAgeOfMachinery.reward.QuestRewardDefinition;
 import com.TheAgeOfMachinery.reward.RewardClaimResult;
 import com.TheAgeOfMachinery.reward.RewardEntry;
 import com.TheAgeOfMachinery.reward.RewardManager;
+import com.TheAgeOfMachinery.sync.PlayerCampaignView;
 
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -166,6 +167,17 @@ public final class CampaignRuntime
         UUID playerId = validatePlayer(player);
 
         return rewardManager.getPlayerRewardsSnapshot(playerId);
+    }
+
+    public PlayerCampaignView getPlayerView(ServerPlayer player)
+    {
+        UUID playerId = validateOnlinePlayer(player);
+        Optional<CampaignSavedData.PlayerSnapshot> result = savedData.getPlayerSnapshot(playerId);
+
+        if (result.isEmpty()) return PlayerCampaignViewFactory.create(sessionId, playerId, 0, campaign, Optional.empty(), Optional.empty());
+
+        CampaignSavedData.PlayerSnapshot snapshot = result.get();
+        return PlayerCampaignViewFactory.create(sessionId, playerId, snapshot.revision(), campaign, Optional.ofNullable(snapshot.quests()), Optional.ofNullable(snapshot.rewards()));
     }
 
     public RewardClaimResult claimReward(ServerPlayer player, String questId, String rewardId)
