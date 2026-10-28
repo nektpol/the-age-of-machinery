@@ -1,0 +1,114 @@
+{
+  "formatVersion": 1,
+  "id": "theageofmachinery:workshop_mixing",
+  "title": "Working Together",
+  "description": "Press five Iron Sheets for a Whisk, then build a Mixer and Basin. Arrange Mixer, one air block, Basin. Gear up to at least 32 RPM. Mix 1 Andesite and 1 Iron Nugget to make Andesite Alloy without heat.",
+  "objectives": [
+    {
+      "id": "craft_whisk",
+      "description": "Craft a Whisk: 2 Andesite Alloy and 5 Iron Sheets.",
+      "requiredAmount": 1,
+      "optional": false,
+      "trigger": {
+        "type": "CRAFT_ITEM",
+        "item": "create:whisk"
+      },
+      "ingredients": [
+        {
+          "item": "create:andesite_alloy",
+          "amount": 2
+        },
+        {
+          "tag": "c:plates/iron",
+          "amount": 5
+        }
+      ]
+    },
+    {
+      "id": "craft_mixer",
+      "description": "Craft a Mechanical Mixer.",
+      "requiredAmount": 1,
+      "optional": false,
+      "trigger": {
+        "type": "CRAFT_ITEM",
+        "item": "create:mechanical_mixer"
+      },
+      "ingredients": [
+        {
+          "item": "create:cogwheel",
+          "amount": 1
+        },
+        {
+          "item": "create:andesite_casing",
+          "amount": 1
+        },
+        {
+          "item": "create:whisk",
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "craft_basin",
+      "description": "Craft a Basin from 5 Andesite Alloy.",
+      "requiredAmount": 1,
+      "optional": false,
+      "trigger": {
+        "type": "CRAFT_ITEM",
+        "item": "create:basin"
+      },
+      "ingredients": [
+        {
+          "item": "create:andesite_alloy",
+          "amount": 5
+        }
+      ]
+    },
+    {
+      "id": "mix_alloy",
+      "description": "Mix 1 Andesite and 1 Iron Nugget to produce 1 Andesite Alloy.",
+      "requiredAmount": 1,
+      "optional": false,
+      "trigger": {
+        "type": "MACHINE_PROCESS",
+        "machine": "create:mechanical_mixer",
+        "output": "create:andesite_alloy"
+      }
+    },
+    {
+      "id": "mix_dough",
+      "description": "Optional: mix 1 Wheat Flour with 1 bucket (1000 mB) of Water to make Dough.",
+      "requiredAmount": 1,
+      "optional": true,
+      "trigger": {
+        "type": "MACHINE_PROCESS",
+        "machine": "create:mechanical_mixer",
+        "output": "create:dough"
+      }
+    }
+  ],
+  "rewards": {
+    "main": [
+      {
+        "id": "main_xp",
+        "type": "EXPERIENCE",
+        "amount": 60
+      },
+      {
+        "id": "main_alloy",
+        "type": "ITEM",
+        "item": "create:andesite_alloy",
+        "amount": 2
+      }
+    ],
+    "optional": {
+      "mix_dough": [
+        {
+          "id": "bonus_mix_dough",
+          "type": "EXPERIENCE",
+          "amount": 15
+        }
+      ]
+    }
+  }
+}

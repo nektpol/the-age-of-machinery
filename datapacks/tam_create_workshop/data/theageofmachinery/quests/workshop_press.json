@@ -1,0 +1,98 @@
+{
+  "formatVersion": 1,
+  "id": "theageofmachinery:workshop_press",
+  "title": "The First Sheets",
+  "description": "Turn rotation into a useful material. Connect a Mechanical Press to your power source, place a Depot two blocks below it with an air gap, and press an Iron Ingot. Craft the machine during this quest.",
+  "objectives": [
+    {
+      "id": "craft_press",
+      "description": "Craft a Mechanical Press.",
+      "requiredAmount": 1,
+      "optional": false,
+      "trigger": {
+        "type": "CRAFT_ITEM",
+        "item": "create:mechanical_press"
+      },
+      "ingredients": [
+        {
+          "item": "create:shaft",
+          "amount": 1
+        },
+        {
+          "item": "create:andesite_casing",
+          "amount": 1
+        },
+        {
+          "tag": "c:storage_blocks/iron",
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "craft_depot",
+      "description": "Craft a Depot for holding the workpiece.",
+      "requiredAmount": 1,
+      "optional": false,
+      "trigger": {
+        "type": "CRAFT_ITEM",
+        "item": "create:depot"
+      },
+      "ingredients": [
+        {
+          "item": "create:andesite_alloy",
+          "amount": 1
+        },
+        {
+          "item": "create:andesite_casing",
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "press_iron_sheet",
+      "description": "Press 1 Iron Ingot into an Iron Sheet.",
+      "requiredAmount": 1,
+      "optional": false,
+      "trigger": {
+        "type": "MACHINE_PROCESS",
+        "machine": "create:mechanical_press",
+        "output": "create:iron_sheet"
+      }
+    },
+    {
+      "id": "press_gold_sheet",
+      "description": "Optional: press a Gold Ingot into a Golden Sheet.",
+      "requiredAmount": 1,
+      "optional": true,
+      "trigger": {
+        "type": "MACHINE_PROCESS",
+        "machine": "create:mechanical_press",
+        "output": "create:golden_sheet"
+      }
+    }
+  ],
+  "rewards": {
+    "main": [
+      {
+        "id": "main_xp",
+        "type": "EXPERIENCE",
+        "amount": 50
+      },
+      {
+        "id": "main_iron",
+        "type": "ITEM",
+        "item": "minecraft:iron_ingot",
+        "amount": 4
+      }
+    ],
+    "optional": {
+      "press_gold_sheet": [
+        {
+          "id": "bonus_press_gold_sheet",
+          "type": "EXPERIENCE",
+          "amount": 15
+        }
+      ]
+    }
+  }
+}

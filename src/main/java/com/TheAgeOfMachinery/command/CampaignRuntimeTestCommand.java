@@ -17,6 +17,7 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.commands.arguments.ResourceLocationArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
@@ -60,6 +61,10 @@ public final class CampaignRuntimeTestCommand
                     .then(Commands.literal("second")
                         .then(Commands.argument("rewardId", Objects.requireNonNull(StringArgumentType.word()))
                             .executes(context -> claim(context.getSource(), 1, StringArgumentType.getString(context, "rewardId")))))
+                    .then(Commands.literal("quest")
+                        .then(Commands.argument("questId", Objects.requireNonNull(ResourceLocationArgument.id()))
+                            .then(Commands.argument("rewardId", Objects.requireNonNull(StringArgumentType.word()))
+                                .executes(context -> claim(context.getSource(), ResourceLocationArgument.getId(Objects.requireNonNull(context), "questId").toString(), StringArgumentType.getString(context, "rewardId"))))))
                 )
         );
     }
@@ -183,13 +188,19 @@ public final class CampaignRuntimeTestCommand
 
     private static int claim(CommandSourceStack source, int questIndex, String rewardId) throws CommandSyntaxException
     {
-        ServerPlayer player = source.getPlayerOrException();
         CampaignRuntime runtime = CampaignRuntime.get(source.getServer());
         List<String> questIds = runtime.getCampaignQuestIds();
 
         if (questIndex < 0 || questIndex >= questIds.size()) return failure(source, "Quest is not registered.");
 
         String questId = questIds.get(questIndex);
+        return claim(source, questId, rewardId);
+    }
+
+    private static int claim(CommandSourceStack source, String questId, String rewardId) throws CommandSyntaxException
+    {
+        ServerPlayer player = source.getPlayerOrException();
+        CampaignRuntime runtime = CampaignRuntime.get(source.getServer());
         RewardClaimResult result = runtime.claimReward(player, questId, rewardId);
 
         if (result == RewardClaimResult.SUCCESS) return success(source, "Reward successfully claimed: " + rewardId);

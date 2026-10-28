@@ -1,8 +1,8 @@
 # The Age of Machinery — fresh-chat continuation guide
 
-> **2.14.5 accepted — 28 October 2026:** the user observed progress on every test objective and confirmed that this completes the basic integration test. Build/regression checks, full Create+ startup and zero-warning Eclipse/JDT null analysis passed. **Next: 2.14.6 — Create campaign content and progression.** Future tests must use small quantities, simple steps and clear pass conditions. The revised fixture has 1-item targets; the current save needs no changes or retest. Broader batch/automation/multiplayer verification stays in 2.14.7. The older implementation plan below is historical context; changes are not yet committed.
+> **2.14.6 system test accepted — 28 October 2026:** the user confirmed Water Wheel progress, manual advancement and earned reward claims. Mark the technical test complete; do not repeat it. **Campaign design is NOT approved:** the default opening wrongly asks for Cobblestone before crafting the table/pickaxe needed to obtain it. Treat the entire existing prelude/chapter as provisional fixtures. Finish the mod systems first, then redesign the campaign from zero for the **whole Create+ inventory and addons**, with correct prerequisites. Next technical work is 2.14.7 integration verification; it must not require playing this rejected sequence as a final campaign. Whenever the user confirms a test, supply a commit title and description. Changes for 2.14.6 are not yet committed.
 
-**Checkpoint:** 2026-10-28 · **2.14.5 completed; basic in-world progress accepted by user, changes not yet committed** · **NEXT: 2.14.6**
+**Checkpoint:** 2026-10-28 · **2.14.5 committed; 2.14.6 system test passed; campaign design provisional**
 **Repo (local):** `C:\the-age-of-machinery`  
 **Minecraft:** 1.21.1 · **NeoForge:** 21.1.233 · **Java:** 21  
 **Full pack:** Create+ Modrinth `6.0.0-alpha-f` in an **isolated Gradle development client** `run-createplus/`  

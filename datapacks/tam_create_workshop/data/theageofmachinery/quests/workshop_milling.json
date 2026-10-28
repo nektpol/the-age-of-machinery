@@ -1,0 +1,78 @@
+{
+  "formatVersion": 1,
+  "id": "theageofmachinery:workshop_milling",
+  "title": "A Working Mill",
+  "description": "Build and power a Millstone, feed it Wheat, and collect the flour. Ingredients below describe the machine recipe; processing consumes one Wheat per roll.",
+  "objectives": [
+    {
+      "id": "craft_millstone",
+      "description": "Craft a Millstone.",
+      "requiredAmount": 1,
+      "optional": false,
+      "trigger": {
+        "type": "CRAFT_ITEM",
+        "item": "create:millstone"
+      },
+      "ingredients": [
+        {
+          "item": "create:cogwheel",
+          "amount": 1
+        },
+        {
+          "item": "create:andesite_casing",
+          "amount": 1
+        },
+        {
+          "tag": "c:stones",
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "mill_flour",
+      "description": "Mill Wheat to produce at least 1 Wheat Flour.",
+      "requiredAmount": 1,
+      "optional": false,
+      "trigger": {
+        "type": "MACHINE_PROCESS",
+        "machine": "create:millstone",
+        "output": "create:wheat_flour"
+      }
+    },
+    {
+      "id": "mill_white_dye",
+      "description": "Optional: mill 1 Bone Meal into 2 White Dye.",
+      "requiredAmount": 2,
+      "optional": true,
+      "trigger": {
+        "type": "MACHINE_PROCESS",
+        "machine": "create:millstone",
+        "output": "minecraft:white_dye"
+      }
+    }
+  ],
+  "rewards": {
+    "main": [
+      {
+        "id": "main_xp",
+        "type": "EXPERIENCE",
+        "amount": 50
+      },
+      {
+        "id": "main_wheat",
+        "type": "ITEM",
+        "item": "minecraft:wheat",
+        "amount": 4
+      }
+    ],
+    "optional": {
+      "mill_white_dye": [
+        {
+          "id": "bonus_mill_white_dye",
+          "type": "EXPERIENCE",
+          "amount": 10
+        }
+      ]
+    }
+  }
+}

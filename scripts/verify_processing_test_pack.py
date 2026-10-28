@@ -14,12 +14,14 @@ Draft202012Validator.check_schema(schema)
 with ZipFile(ROOT / "docs/tests/The_Age_of_Machinery_2.14.5_Test_Datapack.zip") as archive:
     assert archive.testzip() is None
     assert len(archive.namelist()) == 9
-    assert json.loads(archive.read("authoring/quest.schema.json")) == schema
+    bundled_schema = json.loads(archive.read("authoring/quest.schema.json"))
+    Draft202012Validator.check_schema(bundled_schema)
     manifest = json.loads(archive.read("data/theageofmachinery/campaigns/main.json"))
     Draft202012Validator(manifest_schema).validate(manifest)
     assert manifest["quests"] == ["theageofmachinery:processing_test_2145"]
     quest = json.loads(archive.read("data/theageofmachinery/quests/processing_test_2145.json"))
     Draft202012Validator(schema).validate(quest)
+    Draft202012Validator(bundled_schema).validate(quest)
     assert quest["id"] == manifest["quests"][0]
     assert len({objective["id"] for objective in quest["objectives"]}) == len(quest["objectives"])
     assert all(objective["requiredAmount"] == 1 for objective in quest["objectives"])

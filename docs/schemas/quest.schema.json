@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://example.invalid/the-age-of-machinery/schemas/quest.schema.json",
   "title": "The Age of Machinery - Quest Definition v1",
-  "description": "Authoring-time schema for vanilla and Create objective triggers. Cross-quest and registry checks are performed by the Java loader.",
+  "description": "Authoring-time schema for vanilla and Create objectives. Crafting requires ingredient metadata; kinetic activation may include a first-use machine-build checklist.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -226,10 +226,30 @@
             ]
           },
           "else": {
-            "not": {
+            "if": {
+              "properties": {
+                "trigger": {
+                  "properties": {
+                    "type": {
+                      "const": "KINETIC_ACTIVE"
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ]
+                }
+              },
               "required": [
-                "ingredients"
+                "trigger"
               ]
+            },
+            "then": {},
+            "else": {
+              "not": {
+                "required": [
+                  "ingredients"
+                ]
+              }
             }
           }
         },

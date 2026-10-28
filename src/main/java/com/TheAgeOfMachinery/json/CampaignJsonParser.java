@@ -138,11 +138,14 @@ public final class CampaignJsonParser
         ObjectiveTrigger trigger = parseTrigger(required(json, "trigger", sourceId, path + ".trigger"), sourceId, path + ".trigger");
         List<QuestIngredient> ingredients = new ArrayList<>();
 
-        if (trigger.type() == ObjectiveTriggerType.CRAFT_ITEM)
+        boolean crafting = trigger.type() == ObjectiveTriggerType.CRAFT_ITEM;
+        boolean kineticChecklist = trigger.type() == ObjectiveTriggerType.KINETIC_ACTIVE && json.has("ingredients");
+
+        if (crafting || kineticChecklist)
         {
             JsonArray list = array(required(json, "ingredients", sourceId, path + ".ingredients"), sourceId, path + ".ingredients");
 
-            if (list.size() == 0) throw error(sourceId, path + ".ingredients", "Crafting objectives need at least one ingredient.");
+            if (list.size() == 0) throw error(sourceId, path + ".ingredients", "Ingredient checklists need at least one ingredient.");
 
             for (int i = 0; i < list.size(); i++)
             {
@@ -151,7 +154,7 @@ public final class CampaignJsonParser
         }
         else if (json.has("ingredients"))
         {
-            throw error(sourceId, path + ".ingredients", "Only crafting objectives can specify ingredients in format v1.");
+            throw error(sourceId, path + ".ingredients", "Only crafting and kinetic activation objectives can specify ingredients in format v1.");
         }
 
         try

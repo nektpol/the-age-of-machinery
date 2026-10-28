@@ -257,6 +257,10 @@ sourceSets {
         compileClasspath += sourceSets.main.output
         runtimeClasspath += sourceSets.main.output
     }
+    campaignRegression {
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+    }
 }
 
 tasks.register('processingRegression', JavaExec) {
@@ -270,6 +274,21 @@ tasks.register('processingRegression', JavaExec) {
 
 tasks.named('check') {
     dependsOn tasks.named('processingRegression')
+    dependsOn tasks.named('campaignRegression')
+}
+
+tasks.register('campaignRegression', JavaExec) {
+    dependsOn tasks.named('campaignRegressionClasses')
+    classpath = sourceSets.campaignRegression.runtimeClasspath
+    mainClass = 'com.TheAgeOfMachinery.json.CreateChapterRegression'
+    args layout.projectDirectory.asFile.absolutePath
+    workingDir layout.buildDirectory.dir('campaignRegressionRun')
+    doFirst {
+        workingDir.mkdirs()
+    }
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
 }
 
 // -----------------------------------------------------------------------------

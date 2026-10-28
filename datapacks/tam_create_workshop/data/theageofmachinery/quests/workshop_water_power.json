@@ -1,0 +1,106 @@
+{
+  "formatVersion": 1,
+  "id": "theageofmachinery:workshop_water_power",
+  "title": "A Workshop in Motion",
+  "description": "Build a Water Wheel beside flowing water and turn its shaft. Craft while this quest is active; your own placed wheel must run. Use Ponder to explore how flowing water supplies rotation.",
+  "objectives": [
+    {
+      "id": "craft_water_wheel",
+      "description": "Craft one Water Wheel: 8 planks around 1 Shaft.",
+      "requiredAmount": 1,
+      "optional": false,
+      "trigger": {
+        "type": "CRAFT_ITEM",
+        "item": "create:water_wheel"
+      },
+      "ingredients": [
+        {
+          "tag": "minecraft:planks",
+          "amount": 8
+        },
+        {
+          "item": "create:shaft",
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "run_water_wheel",
+      "description": "Place your Water Wheel and run it at 8 RPM or more.",
+      "requiredAmount": 1,
+      "optional": false,
+      "trigger": {
+        "type": "KINETIC_ACTIVE",
+        "machine": "create:water_wheel",
+        "minSpeed": 8
+      }
+    },
+    {
+      "id": "craft_shafts",
+      "description": "Optional: craft one batch of 8 Shafts from 2 Andesite Alloy.",
+      "requiredAmount": 8,
+      "optional": true,
+      "trigger": {
+        "type": "CRAFT_ITEM",
+        "item": "create:shaft"
+      },
+      "ingredients": [
+        {
+          "item": "create:andesite_alloy",
+          "amount": 2
+        }
+      ]
+    },
+    {
+      "id": "craft_cogwheel",
+      "description": "Optional: craft a Cogwheel to redirect the drive.",
+      "requiredAmount": 1,
+      "optional": true,
+      "trigger": {
+        "type": "CRAFT_ITEM",
+        "item": "create:cogwheel"
+      },
+      "ingredients": [
+        {
+          "item": "create:shaft",
+          "amount": 1
+        },
+        {
+          "tag": "minecraft:planks",
+          "amount": 1
+        }
+      ]
+    }
+  ],
+  "rewards": {
+    "main": [
+      {
+        "id": "main_xp",
+        "type": "EXPERIENCE",
+        "amount": 40
+      },
+      {
+        "id": "main_alloy",
+        "type": "ITEM",
+        "item": "create:andesite_alloy",
+        "amount": 2
+      }
+    ],
+    "optional": {
+      "craft_shafts": [
+        {
+          "id": "bonus_craft_shafts",
+          "type": "EXPERIENCE",
+          "amount": 10
+        }
+      ],
+      "craft_cogwheel": [
+        {
+          "id": "bonus_craft_cogwheel",
+          "type": "EXPERIENCE",
+          "amount": 10
+        }
+      ]
+    }
+  }
+}

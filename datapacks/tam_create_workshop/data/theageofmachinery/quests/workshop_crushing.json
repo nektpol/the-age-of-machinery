@@ -1,0 +1,103 @@
+{
+  "formatVersion": 1,
+  "id": "theageofmachinery:workshop_crushing",
+  "title": "Built for Tougher Work",
+  "description": "Build a pair of Crushing Wheels with 21 Mechanical Crafters (seven batches of three). Ponder shows their layout and power connections. Place the wheels with a one-block gap, counter-rotate them to pull Cobblestone through, and produce Gravel.",
+  "objectives": [
+    {
+      "id": "craft_crafters",
+      "description": "Craft your first batch of 3 Mechanical Crafters. A full wheel recipe uses 21; existing crafters may be reused.",
+      "requiredAmount": 3,
+      "optional": false,
+      "trigger": {
+        "type": "CRAFT_ITEM",
+        "item": "create:mechanical_crafter"
+      },
+      "ingredients": [
+        {
+          "item": "create:electron_tube",
+          "amount": 1
+        },
+        {
+          "item": "create:brass_casing",
+          "amount": 1
+        },
+        {
+          "item": "minecraft:crafting_table",
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "run_crushing_wheel",
+      "description": "Build the pair (recipe: 16 Andesite Alloy, 4 planks, 1 stone), place the wheels yourself, and run one at 16 RPM or more.",
+      "requiredAmount": 1,
+      "optional": false,
+      "trigger": {
+        "type": "KINETIC_ACTIVE",
+        "machine": "create:crushing_wheel",
+        "minSpeed": 16
+      },
+      "ingredients": [
+        {
+          "item": "create:andesite_alloy",
+          "amount": 16
+        },
+        {
+          "tag": "minecraft:planks",
+          "amount": 4
+        },
+        {
+          "tag": "c:stones",
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "crush_gravel",
+      "description": "Crush 1 Cobblestone into Gravel.",
+      "requiredAmount": 1,
+      "optional": false,
+      "trigger": {
+        "type": "MACHINE_PROCESS",
+        "machine": "create:crushing_wheel",
+        "output": "minecraft:gravel"
+      }
+    },
+    {
+      "id": "crush_sand",
+      "description": "Optional: pass Gravel through the wheels to produce Sand.",
+      "requiredAmount": 1,
+      "optional": true,
+      "trigger": {
+        "type": "MACHINE_PROCESS",
+        "machine": "create:crushing_wheel",
+        "output": "minecraft:sand"
+      }
+    }
+  ],
+  "rewards": {
+    "main": [
+      {
+        "id": "main_xp",
+        "type": "EXPERIENCE",
+        "amount": 100
+      },
+      {
+        "id": "main_alloy",
+        "type": "ITEM",
+        "item": "create:andesite_alloy",
+        "amount": 4
+      }
+    ],
+    "optional": {
+      "crush_sand": [
+        {
+          "id": "bonus_crush_sand",
+          "type": "EXPERIENCE",
+          "amount": 20
+        }
+      ]
+    }
+  }
+}

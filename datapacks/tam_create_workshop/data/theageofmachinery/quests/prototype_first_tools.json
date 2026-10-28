@@ -1,0 +1,58 @@
+{
+  "formatVersion": 1,
+  "id": "theageofmachinery:prototype_first_tools",
+  "title": "The First Tools",
+  "description": "Prepare the basic tools required before working with machinery.",
+  "objectives": [
+    {
+      "id": "craft_crafting_table",
+      "description": "Craft a Crafting Table",
+      "requiredAmount": 1,
+      "optional": false,
+      "trigger": {
+        "type": "CRAFT_ITEM",
+        "item": "minecraft:crafting_table"
+      },
+      "ingredients": [
+        {
+          "tag": "minecraft:planks",
+          "amount": 4
+        }
+      ]
+    },
+    {
+      "id": "craft_furnace",
+      "description": "Craft a Furnace",
+      "requiredAmount": 1,
+      "optional": true,
+      "trigger": {
+        "type": "CRAFT_ITEM",
+        "item": "minecraft:furnace"
+      },
+      "ingredients": [
+        {
+          "item": "minecraft:cobblestone",
+          "amount": 8
+        }
+      ]
+    }
+  ],
+  "rewards": {
+    "main": [
+      {
+        "id": "main_xp",
+        "type": "EXPERIENCE",
+        "amount": 50
+      }
+    ],
+    "optional": {
+      "craft_furnace": [
+        {
+          "id": "optional_xp",
+          "type": "EXPERIENCE",
+          "amount": 15
+        }
+      ]
+    }
+  }
+}

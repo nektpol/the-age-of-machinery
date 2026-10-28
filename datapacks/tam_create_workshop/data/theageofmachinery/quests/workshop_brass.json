@@ -1,0 +1,74 @@
+{
+  "formatVersion": 1,
+  "id": "theageofmachinery:workshop_brass",
+  "title": "A Hotter Workshop",
+  "description": "Craft an Empty Blaze Burner and capture a Blaze with it. Put the occupied Burner below the Basin and fuel it until heated. Mix 1 Copper Ingot with 1 Zinc Ingot to produce 2 Brass Ingots.",
+  "objectives": [
+    {
+      "id": "craft_burner",
+      "description": "Craft an Empty Blaze Burner from 4 Iron Sheets around Netherrack.",
+      "requiredAmount": 1,
+      "optional": false,
+      "trigger": {
+        "type": "CRAFT_ITEM",
+        "item": "create:empty_blaze_burner"
+      },
+      "ingredients": [
+        {
+          "tag": "c:plates/iron",
+          "amount": 4
+        },
+        {
+          "tag": "c:netherracks",
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "mix_brass",
+      "description": "Produce 2 Brass Ingots in a heated Mechanical Mixer.",
+      "requiredAmount": 2,
+      "optional": false,
+      "trigger": {
+        "type": "MACHINE_PROCESS",
+        "machine": "create:mechanical_mixer",
+        "output": "create:brass_ingot"
+      }
+    },
+    {
+      "id": "press_brass_sheet",
+      "description": "Optional: press 1 Brass Ingot into a Brass Sheet.",
+      "requiredAmount": 1,
+      "optional": true,
+      "trigger": {
+        "type": "MACHINE_PROCESS",
+        "machine": "create:mechanical_press",
+        "output": "create:brass_sheet"
+      }
+    }
+  ],
+  "rewards": {
+    "main": [
+      {
+        "id": "main_xp",
+        "type": "EXPERIENCE",
+        "amount": 75
+      },
+      {
+        "id": "main_brass",
+        "type": "ITEM",
+        "item": "create:brass_ingot",
+        "amount": 2
+      }
+    ],
+    "optional": {
+      "press_brass_sheet": [
+        {
+          "id": "bonus_press_brass_sheet",
+          "type": "EXPERIENCE",
+          "amount": 20
+        }
+      ]
+    }
+  }
+}

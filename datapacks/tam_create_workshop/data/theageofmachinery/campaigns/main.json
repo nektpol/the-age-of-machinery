@@ -1,0 +1,14 @@
+{
+  "formatVersion": 1,
+  "id": "theageofmachinery:main",
+  "quests": [
+    "theageofmachinery:prototype_first_workshop",
+    "theageofmachinery:prototype_first_tools",
+    "theageofmachinery:workshop_water_power",
+    "theageofmachinery:workshop_press",
+    "theageofmachinery:workshop_milling",
+    "theageofmachinery:workshop_mixing",
+    "theageofmachinery:workshop_brass",
+    "theageofmachinery:workshop_crushing"
+  ]
+}

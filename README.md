@@ -1,10 +1,10 @@
 # The Age of Machinery
 
-> **2.14.5 completed — 28 October 2026:** the user confirmed progress on every test objective in the full Create+ pack and accepted the basic integration test. Build, replay regressions, fixture validation and null analysis also passed. No 4096-item grind or repeat testing is required. The [short test guide](docs/tests/2.14.5-processing.md) and future fixture now use one operation per machine. **Next: 2.14.6 — Create campaign content.** Broader integration checks remain in 2.14.7.
+> **2.14.6 system test passed — 28 October 2026:** the user confirmed Water Wheel progress, manual advancement and earned reward claims. Build, parser/domain regressions, schema/recipe checks and null analysis also passed. **All current campaign content is provisional.** The default cobblestone-before-crafting-table sequence has invalid prerequisites and is not an approved survival opening. Finish the mod systems first, then redesign progression from the beginning for the **full Create+ inventory and addons**. The [chapter ZIP](docs/datapacks/The_Age_of_Machinery_2.14.6_Create_Workshop.zip) is a campaign-system fixture, not a final campaign. Next technical milestone: **2.14.7 integration verification**.
 
 *A spoiler-conscious, Create-focused quest and progression mod for Minecraft Java Edition 1.21.1 (NeoForge).*
 
-> **Development checkpoint — 27 October 2026 · 2.14.4 completed, tested, and committed (developer report).** The Age of Machinery now supports server-authoritative quest progression, JSON/data-pack campaigns, builder-attributed Create machine ownership, live kinetic operation detection (2.14.3), and observed Mechanical Press item processing (2.14.4). The developer reports a successful build, 100% success on the milestone checks, and a Git commit for 2.14.4. This document is a retrospective update from the 2.14.2 documentation snapshot and the 2.14.3–2.14.4 implementation discussed in development; it is **not a direct audit of the current local Git working tree or commit hash**. **Next: 2.14.6, Create campaign content and progression.**
+> **Development checkpoint — 27 October 2026 · 2.14.4 completed, tested, and committed (developer report).** The Age of Machinery now supports server-authoritative quest progression, JSON/data-pack campaigns, builder-attributed Create machine ownership, live kinetic operation detection (2.14.3), and observed Mechanical Press item processing (2.14.4). The developer reports a successful build, 100% success on the milestone checks, and a Git commit for 2.14.4. This document is a retrospective update from the 2.14.2 documentation snapshot and the 2.14.3–2.14.4 implementation discussed in development; it is **not a direct audit of the current local Git working tree or commit hash**. **Current checkpoint: 2.14.6 system test accepted; final campaign design deferred.**
 >
 > **Development launch:** the full Create+ 6.0.0-alpha-f pack is run through Gradle `runClient` in isolated `run-createplus`, with The Age of Machinery loaded from the development source set for IDE debugging. A previous launch blocker was resolved by correcting the local Java environment; exact changes from that external fix were not recorded here. Do not revert to a reduced Create setup or manual Modrinth JAR-copy workflow.
 >
@@ -12,7 +12,7 @@
 
 ## Project vision and gameplay rules
 
-The Age of Machinery is intended to guide players through a discovery-oriented Create/Create+ engineering campaign rather than generic grinding. The current quests are **vanilla Minecraft prototypes**, not the final engineering campaign.
+The Age of Machinery is intended to guide players through a discovery-oriented Create/Create+ engineering campaign rather than generic grinding. The bundled default remains the two-quest vanilla prototype. The installable **Create+ Workshop** pack adds six provisional quests after that prelude; its campaign-system smoke test passed. Neither the prelude nor this chapter is an approved final campaign.
 
 - **Exactly one active quest per player.** Completed quests remain in history; future quests are not populated as active progress records.
 - **Mandatory and optional objectives.** Mandatory progress unlocks the right to **manually advance**; optional tasks remain available until advancement and may grant extra rewards.
@@ -158,7 +158,7 @@ These commands are for testing and diagnosis, **not** the finished player experi
 | `/tamruntime progress <objectiveId> <amount>` | **Debug-only** simulated objective progress |
 | `/tamruntime advance` | Finalize eligible active quest (manual advancement) |
 | `/tamruntime rewards` | Inspect *unlocked* reward entries and claim states |
-| `/tamruntime claim first <rewardId>` / `second <rewardId>` | Claim earned prototype rewards; aliases currently limited to two quests |
+| `/tamruntime claim first <rewardId>` / `second <rewardId>` / `quest <questId> <rewardId>` | Claim earned rewards; the quest-ID form supports every chapter quest |
 | `/tamruntime verify` / `audit` | Check rejected operations and read-only player diagnostics |
 | `/tamjson test` | JSON parser and negative-case tests |
 | `/tamregistry test` | Whole-campaign validation tests |

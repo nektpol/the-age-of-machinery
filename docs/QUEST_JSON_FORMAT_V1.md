@@ -38,6 +38,10 @@ Every objective has a stable local `id`, an author-facing `description`, `requir
 - `MANUAL`: `{ "type": "MANUAL" }` (no target).
 - `CRAFT_ITEM`: `{ "type": "CRAFT_ITEM", "item": "minecraft:crafting_table" }`.
 - `PICKUP_ITEM`: `{ "type": "PICKUP_ITEM", "item": "minecraft:cobblestone" }`.
+- `KINETIC_ACTIVE`: machine registry ID and positive `minSpeed`; `requiredAmount` is always 1. An optional `ingredients` checklist can describe the first-use machine build (added in 2.14.6).
+- `MACHINE_PROCESS`: machine registry ID and output item registry ID; counts successful server-observed production.
+
+As of 2.14.6, kinetic objectives may carry the same positive-quantity ingredient checklist as crafting objectives. Crafting still requires one; other objective types cannot declare ingredients. This is an additive format-v1 authoring change. The complete current schema is `docs/schemas/quest.schema.json` and is included in the workshop chapter ZIP. Ingredient quantities describe one recipe batch (e.g. a pair of Crushing Wheels), independently of the kinetic activation count of 1.
 
 Crafting objectives in format v1 **require** an `ingredients` checklist with at least one ingredient. Each ingredient has positive `amount` and exactly one of `item` or `tag`, e.g. `{ "tag": "minecraft:planks", "amount": 4 }`. This is a *display checklist* and not a recipe override or proof of item ownership. Item tags make generic planks possible, though some real recipes have multiple alternatives that cannot yet be represented perfectly. `PICKUP_ITEM` retains existing **ground pickup** semantics, not all sources of acquisition.
 
