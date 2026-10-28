@@ -1,8 +1,8 @@
 # The Age of Machinery — fresh-chat continuation guide
 
-> **2.14.6 system test accepted — 28 October 2026:** the user confirmed Water Wheel progress, manual advancement and earned reward claims. Mark the technical test complete; do not repeat it. **Campaign design is NOT approved:** the default opening wrongly asks for Cobblestone before crafting the table/pickaxe needed to obtain it. Treat the entire existing prelude/chapter as provisional fixtures. Finish the mod systems first, then redesign the campaign from zero for the **whole Create+ inventory and addons**, with correct prerequisites. Next technical work is 2.14.7 integration verification; it must not require playing this rejected sequence as a final campaign. Whenever the user confirms a test, supply a commit title and description. Changes for 2.14.6 are not yet committed.
+> **Current checkpoint — 28 October 2026:** the user confirmed ownership works and approved moving on from the basic 2.14.7 checkpoint. Do not infer that its new restart test or two-player tests passed; those results were not reported. 2.14.6 advancement/reward smoke testing was already accepted and committed (`a21e893`). **Next: 2.15 — Client Synchronization and Visibility**, split into six steps in `milestones.md`: authorized state, S2C sync, C2S Advance/Claim, cache/revision handling, quiet progress feedback and practical tests. Keep the server authoritative and exclude future quests/unearned rewards. UI is 2.16. Final campaign design remains deferred until systems are complete and must cover the full Create+ inventory. Always provide a commit title and description after user-confirmed tests.
 
-**Checkpoint:** 2026-10-28 · **2.14.5 committed; 2.14.6 system test passed; campaign design provisional**
+**Checkpoint:** 2026-10-28 · **2.14.7 ownership accepted; next 2.15; campaign design provisional**
 **Repo (local):** `C:\the-age-of-machinery`  
 **Minecraft:** 1.21.1 · **NeoForge:** 21.1.233 · **Java:** 21  
 **Full pack:** Create+ Modrinth `6.0.0-alpha-f` in an **isolated Gradle development client** `run-createplus/`  

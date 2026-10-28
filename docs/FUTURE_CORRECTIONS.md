@@ -6,7 +6,7 @@
 **Target:** Minecraft 1.21.1 · NeoForge 21.1.233 · Java 21 · Create 6.0.10 · Create+ 6.0.0-alpha-f  
 **Mod ID:** `theageofmachinery` · **Java package:** `com.TheAgeOfMachinery`  
 **Document:** Living engineering backlog, risks, verification ledger and architecture decisions  
-**Last consolidated:** **28 October 2026 — 2.14.6 system test accepted; final campaign design deferred**
+**Last consolidated:** **28 October 2026 — 2.14.7 ownership accepted; 2.15 next; final campaign design deferred**
 
 > **Status precision:** Developer reports a successful 2.14.4 build, 100% test success and a Git commit. The source/commit SHA and complete test output were not independently inspected for this documentation update. 2.14.1–2.14.3 were also reported built and committed. The full Create+ development run through Gradle now works after a local Java-environment correction whose specific changes were not recorded. **Two real-player multiplayer, crash-atomic reward claims, cross-restart campaign migration, invalid JSON diagnostics, automated performance/stress coverage and all-recipe batch semantics remain unverified**. A completed milestone does not automatically close other pending release risks.
 
@@ -56,8 +56,8 @@ These are agreed product rules; `[x]` below means **decision confirmed**, not ne
 | **2.14.4** | Create 6.0.10 Mechanical Press Mixins for belt, world and basin; `ProcessingCompletedEvent` routed with machine ownership | **Build 100% successful, milestone tests 100% successful, committed (developer report)** |
 | **2.14.5** | Millstone, Crushing Wheels and Mixer processing adapters | **Implemented; user confirmed all objective progress and accepted basic testing (2026-10-28)** |
 | **2.14.6** | Provisional chapter fixture, ingredients, optional rewards and generic operator claims | Technical smoke test accepted by user; campaign design not approved |
-| **2.14.7** | System integration/regression using provisional fixtures | Planned; final campaign design follows completion of mod systems |
-| **2.15** | Spoiler-safe network/UI, journal, ingredients, rewards and hints | Planned |
+| **2.14.7** | Basic Create integration checkpoint | User confirmed ownership and approved moving on; new restart/continued-progress tests unreported, multiplayer still pending |
+| **2.15** | Authorized player state, server/client synchronization, Advance/Claim requests and restrained feedback | NEXT; six steps in milestones.md. Journal UI remains 2.16 |
 
 **Working state:** A Minecraft server loads JSON data-pack quest definitions through a validated ordered manifest; `CampaignRuntime` and `CampaignSavedData` v3 own authoritative per-player progression. Existing `PICKUP_ITEM` / `CRAFT_ITEM` triggers work for prototype quests. Create machine installation ownership feeds trusted machine events into `CreateObjectiveRouter`. `CreateKineticMonitor` emits qualifying kinetic events; Mechanical Press hooks report actual item production from belt, world and basin paths. The full Create+ 6.0.0-alpha-f development instance launches via Gradle `runClient` after the user's Java environment fix.
 
