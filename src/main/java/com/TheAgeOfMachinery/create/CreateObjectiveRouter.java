@@ -11,11 +11,10 @@ import com.TheAgeOfMachinery.runtime.CampaignRuntime;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 
 import java.util.IdentityHashMap;
-import java.util.Iterator;
-import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -26,17 +25,19 @@ public final class CreateObjectiveRouter
 {
     private static final int MAX_RECORDED_OPERATIONS = 4096;
 
-    private static final Map<MinecraftServer, Set<OperationKey>> PROCESSED_OPERATIONS = new IdentityHashMap<>();
-
-    private record OperationKey(UUID installationId, UUID operationId)
-    {
-    }
+    private static final Map<MinecraftServer, ProcessingOperationLedger> PROCESSED_OPERATIONS = new IdentityHashMap<>();
 
     private CreateObjectiveRouter()
     {
     }
 
     public static int route(ServerLevel level, CreateMachineEvent event)
+    {
+        return route(level, event, Set.of());
+    }
+
+    // A physical wheel pair shares one production run; owners of both wheels receive it once.
+    static int route(ServerLevel level, CreateMachineEvent event, Set<UUID> excludedOwners)
     {
         Objects.requireNonNull(level, "Level cannot be null.");
         Objects.requireNonNull(event, "Machine event cannot be null.");
@@ -53,7 +54,7 @@ public final class CreateObjectiveRouter
 
         if (event instanceof ProcessingCompletedEvent processing)
         {
-            if (!rememberOperation(server, attributed.installationId(), processing.operationId())) return 0;
+            if (!rememberOperation(server, attributed.installationId(), processing.operationId(), processing.outputItemId())) return 0;
         }
 
         Optional<CampaignRuntime> runtimeResult = CampaignRuntime.findIfStarted(server);
@@ -65,6 +66,7 @@ public final class CreateObjectiveRouter
 
         for (UUID ownerId : attributed.owners())
         {
+            if (excludedOwners.contains(ownerId)) continue;
             ServerPlayer player = server.getPlayerList().getPlayer(Objects.requireNonNull(ownerId));
 
             if (player == null) continue;
@@ -126,21 +128,11 @@ public final class CreateObjectiveRouter
         return false;
     }
 
-    private static boolean rememberOperation(MinecraftServer server, UUID installationId, UUID operationId)
+    private static boolean rememberOperation(MinecraftServer server, UUID installationId, UUID operationId, ResourceLocation outputItemId)
     {
-        Set<OperationKey> operations = PROCESSED_OPERATIONS.computeIfAbsent(server, ignored -> new LinkedHashSet<>());
-        OperationKey key = new OperationKey(installationId, operationId);
+        ProcessingOperationLedger ledger = PROCESSED_OPERATIONS.computeIfAbsent(server, ignored -> new ProcessingOperationLedger(MAX_RECORDED_OPERATIONS));
 
-        if (!operations.add(key)) return false;
-
-        if (operations.size() > MAX_RECORDED_OPERATIONS)
-        {
-            Iterator<OperationKey> iterator = operations.iterator();
-            iterator.next();
-            iterator.remove();
-        }
-
-        return true;
+        return ledger.remember(installationId, operationId, outputItemId.toString());
     }
 
     public static void onServerStopped(ServerStoppedEvent event)

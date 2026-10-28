@@ -1,6 +1,8 @@
 # The Age of Machinery — fresh-chat continuation guide
 
-**Checkpoint:** 2026-10-27 · **2.14.4 completed, reported 100% successful and committed** · **NEXT: 2.14.5**  
+> **2.14.5 accepted — 28 October 2026:** the user observed progress on every test objective and confirmed that this completes the basic integration test. Build/regression checks, full Create+ startup and zero-warning Eclipse/JDT null analysis passed. **Next: 2.14.6 — Create campaign content and progression.** Future tests must use small quantities, simple steps and clear pass conditions. The revised fixture has 1-item targets; the current save needs no changes or retest. Broader batch/automation/multiplayer verification stays in 2.14.7. The older implementation plan below is historical context; changes are not yet committed.
+
+**Checkpoint:** 2026-10-28 · **2.14.5 completed; basic in-world progress accepted by user, changes not yet committed** · **NEXT: 2.14.6**
 **Repo (local):** `C:\the-age-of-machinery`  
 **Minecraft:** 1.21.1 · **NeoForge:** 21.1.233 · **Java:** 21  
 **Full pack:** Create+ Modrinth `6.0.0-alpha-f` in an **isolated Gradle development client** `run-createplus/`  
@@ -98,7 +100,7 @@ Install the complete ZIP unextracted into `run-createplus/saves/<test-world>/dat
 
 For physical tests, place and power the press yourself, confirm ownership with `/tamowner info` and verify one actual produced Iron Sheet advances `press_iron_sheets` by exactly 1 (0/3, 1/3, 2/3, 3/3). Inspect actual Create recipe in Create+ if altered by the pack. Depot, moving belt, loose-world-item and item-producing basin compaction were included in the 2.14.4 test design. Do not infer that this fixture is the default released quest campaign: the built-in prototype has only two quests.
 
-## 3. NEXT — milestone 2.14.5: generalized Create processing
+## 3. Historical 2.14.5 implementation plan — completed for basic progress detection
 
 **Goal:** server-trusted `MACHINE_PROCESS` credit for **Millstone, Crushing Wheels and Mechanical Mixer**, including automation, batch sizes and byproducts, reusing the architecture that has already been tested with Mechanical Press.
 
@@ -157,6 +159,6 @@ See `docs/FUTURE_CORRECTIONS.md` for complete issue ledger; **preserve all exist
 
 ## 6. Suggested first user message in a fresh chat
 
-> Continue **The Age of Machinery** at milestone **2.14.5**. Milestones 2.14.1–2.14.4 are completed, tested and committed. Full Create+ 6.0.0-alpha-f works through Gradle `runClient` with IDE debugging; don't change the Java/Gradle launch solution. Read `README.md`, `docs/FUTURE_CORRECTIONS.md` and this handoff first. We want real machine processing completion detection for **Millstone, Crushing Wheels and Mechanical Mixer**, built on our existing `ProcessingCompletedEvent`, machine ownership and `CreateObjectiveRouter`. Start by examining current source and Create 6.0.10 processing paths, then design success hooks that avoid simulation, canceled operations and double counting. Follow my Java formatting preferences, include concrete in-game tests, and don't invent incomplete quest JSON. The 2.14.4 press integration must remain intact.
+> Continue **The Age of Machinery** at milestone **2.14.6**. 2.14.5 basic progress testing was accepted by the user on 28 October 2026; author the first real Create campaign chapter next. The following older implementation prompt is historical: Continue at milestone **2.14.5**. Milestones 2.14.1–2.14.4 are completed, tested and committed. Full Create+ 6.0.0-alpha-f works through Gradle `runClient` with IDE debugging; don't change the Java/Gradle launch solution. Read `README.md`, `docs/FUTURE_CORRECTIONS.md` and this handoff first. We want real machine processing completion detection for **Millstone, Crushing Wheels and Mechanical Mixer**, built on our existing `ProcessingCompletedEvent`, machine ownership and `CreateObjectiveRouter`. Start by examining current source and Create 6.0.10 processing paths, then design success hooks that avoid simulation, canceled operations and double counting. Follow my Java formatting preferences, include concrete in-game tests, and don't invent incomplete quest JSON. The 2.14.4 press integration must remain intact.
 
-**Key instruction:** The point of the new conversation is to implement **2.14.5**, not re-litigate the completed Gradle/Connector troubleshooting or recreate the 2.14.4 datapack.
+**Key instruction:** Next is **2.14.6**. Keep tests practical: a short numbered guide, small quantities, and a clear pass condition. Do not ask the user to repeat accepted 2.14.5 progress tests or produce thousands of items. Preserve the full Create+ Gradle workflow.

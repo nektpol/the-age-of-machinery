@@ -1,10 +1,12 @@
 # The Age of Machinery — Future Corrections & Implementation Guide
 
+> **2.14.5 accepted — 28 October 2026:** Millstone, Crushing Wheels, Mixer and Press test objectives all showed progress; the user accepted this as completion of basic integration testing. Build, replay regressions, full Create+ startup, fixture validation and zero-warning null analysis passed. **Next: 2.14.6.** Tests now use 1-item targets and a [short guide](tests/2.14.5-processing.md); no current-save changes or repeat testing are required. I-014/I-015 retain the separate batch, exception, multiplayer and other edge checks for 2.14.7; basic progress acceptance does not claim those results.
+
 **Project:** The Age of Machinery  
 **Target:** Minecraft 1.21.1 · NeoForge 21.1.233 · Java 21 · Create 6.0.10 · Create+ 6.0.0-alpha-f  
 **Mod ID:** `theageofmachinery` · **Java package:** `com.TheAgeOfMachinery`  
 **Document:** Living engineering backlog, risks, verification ledger and architecture decisions  
-**Last consolidated:** **27 October 2026 — through completed/committed 2.14.4; 2.14.5 NEXT**
+**Last consolidated:** **28 October 2026 — 2.14.5 basic progress accepted; 2.14.6 NEXT**
 
 > **Status precision:** Developer reports a successful 2.14.4 build, 100% test success and a Git commit. The source/commit SHA and complete test output were not independently inspected for this documentation update. 2.14.1–2.14.3 were also reported built and committed. The full Create+ development run through Gradle now works after a local Java-environment correction whose specific changes were not recorded. **Two real-player multiplayer, crash-atomic reward claims, cross-restart campaign migration, invalid JSON diagnostics, automated performance/stress coverage and all-recipe batch semantics remain unverified**. A completed milestone does not automatically close other pending release risks.
 
@@ -52,7 +54,7 @@ These are agreed product rules; `[x]` below means **decision confirmed**, not ne
 | **2.14.2** | Create machine events, builder registration/persistence, owner attribution, `KINETIC_ACTIVE` / `MACHINE_PROCESS` schema + routing | Built/committed as a development milestone; two-user test pending |
 | **2.14.3** | `CreateKineticMonitor` detects live running installed machines; `/tamkinetic inspect` | Built/tested/committed (developer report) |
 | **2.14.4** | Create 6.0.10 Mechanical Press Mixins for belt, world and basin; `ProcessingCompletedEvent` routed with machine ownership | **Build 100% successful, milestone tests 100% successful, committed (developer report)** |
-| **2.14.5** | Extend processing observation to Millstone, Crushing Wheels and Mixer, with batch and automation correctness | **NEXT; not implemented** |
+| **2.14.5** | Millstone, Crushing Wheels and Mixer processing adapters | **Implemented; user confirmed all objective progress and accepted basic testing (2026-10-28)** |
 | **2.14.6–2.14.7** | Real Create quest chapter and full integration/regression | Planned |
 | **2.15** | Spoiler-safe network/UI, journal, ingredients, rewards and hints | Planned |
 
@@ -536,7 +538,7 @@ These are agreed product rules; `[x]` below means **decision confirmed**, not ne
    - **2.14.2:** MachineLocation/installation identity, builder registration/persistence, per-owner attribution, kinetic/processing event contracts and JSON triggers; routing/synthetic event test commands.
    - **2.14.3:** Server-side live kinetic monitoring; working/stressed/stationary distinctions; `/tamkinetic inspect`.
    - **2.14.4:** Mechanical Press real belt, loose-world-item and basin item-output callbacks; progress through existing routing; developer reports 100% tests and commit.
-4. **2.14.5 — Additional processing/automation (NEXT):** Millstone, Crushing Wheels, Mechanical Mixer. Inspect exact Create 6.0.10 code before choosing hooks; capture output item and quantity for *successful* operations, deduplicate operation provenance, handle batches and byproducts, and avoid extra inventory polling. Keep all 2.14.4 press regressions green; resolve or explicitly record I-014/I-015 edges.
+4. **2.14.5 — Additional processing/automation (basic progress accepted):** Millstone, Crushing Wheels, Mechanical Mixer. Inspect exact Create 6.0.10 code before choosing hooks; capture output item and quantity for *successful* operations, deduplicate operation provenance, handle batches and byproducts, and avoid extra inventory polling. Keep all 2.14.4 press regressions green; resolve or explicitly record I-014/I-015 edges.
 5. **2.14.6 — Create quest chapter:** Author actual survival Create quest progress in JSON/data packs with first-use required ingredients, optional mechanical achievements, safe manual advancement and earned XP/item rewards. For schema or datapack edits, provide the **complete final `quest.schema.json` plus a ready-to-install full ZIP**, not isolated fragments.
 6. **2.14.7 — Integrated Create+ tests:** Powered vs unpowered, overstressed/reverse rotation, machine ownership, processing outputs, multiple simultaneous machines, restart/rejoin, malformed definitions, quest optional handling/rewards and production profile. Two-account tests remain a separate explicit gate until available.
 7. **2.15 — Journal and networking:** Spoiler-safe player-visible quest state, ingredient checklist with quantities, three hints, manual advancement/claim UI and no per-item chat flood (I-012).

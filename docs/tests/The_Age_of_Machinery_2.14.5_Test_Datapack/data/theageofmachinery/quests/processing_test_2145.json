@@ -1,0 +1,125 @@
+{
+  "formatVersion": 1,
+  "id": "theageofmachinery:processing_test_2145",
+  "title": "Processing Integration Laboratory",
+  "description": "Development-only fixture. Keep this quest active throughout the acceptance tests.",
+  "objectives": [
+    {
+      "id": "finish_testing",
+      "description": "Operator-only test completion gate",
+      "requiredAmount": 1,
+      "optional": false,
+      "trigger": {
+        "type": "MANUAL"
+      }
+    },
+    {
+      "id": "power_mechanical_press",
+      "description": "Operate a Mechanical Press at 16 RPM or more",
+      "requiredAmount": 1,
+      "optional": true,
+      "trigger": {
+        "type": "KINETIC_ACTIVE",
+        "machine": "create:mechanical_press",
+        "minSpeed": 16
+      }
+    },
+    {
+      "id": "mill_flint",
+      "description": "Observe flint produced by millstone",
+      "requiredAmount": 1,
+      "optional": true,
+      "trigger": {
+        "type": "MACHINE_PROCESS",
+        "machine": "create:millstone",
+        "output": "minecraft:flint"
+      }
+    },
+    {
+      "id": "mill_redstone",
+      "description": "Observe redstone produced by millstone",
+      "requiredAmount": 1,
+      "optional": true,
+      "trigger": {
+        "type": "MACHINE_PROCESS",
+        "machine": "create:millstone",
+        "output": "minecraft:redstone"
+      }
+    },
+    {
+      "id": "crush_flint",
+      "description": "Observe flint produced by crushing_wheel",
+      "requiredAmount": 1,
+      "optional": true,
+      "trigger": {
+        "type": "MACHINE_PROCESS",
+        "machine": "create:crushing_wheel",
+        "output": "minecraft:flint"
+      }
+    },
+    {
+      "id": "crush_redstone",
+      "description": "Observe redstone produced by crushing_wheel",
+      "requiredAmount": 1,
+      "optional": true,
+      "trigger": {
+        "type": "MACHINE_PROCESS",
+        "machine": "create:crushing_wheel",
+        "output": "minecraft:redstone"
+      }
+    },
+    {
+      "id": "mix_flint",
+      "description": "Observe flint produced by mechanical_mixer",
+      "requiredAmount": 1,
+      "optional": true,
+      "trigger": {
+        "type": "MACHINE_PROCESS",
+        "machine": "create:mechanical_mixer",
+        "output": "minecraft:flint"
+      }
+    },
+    {
+      "id": "mix_redstone",
+      "description": "Observe redstone produced by mechanical_mixer",
+      "requiredAmount": 1,
+      "optional": true,
+      "trigger": {
+        "type": "MACHINE_PROCESS",
+        "machine": "create:mechanical_mixer",
+        "output": "minecraft:redstone"
+      }
+    },
+    {
+      "id": "press_iron_sheet",
+      "description": "Observe iron_sheet produced by mechanical_press",
+      "requiredAmount": 1,
+      "optional": true,
+      "trigger": {
+        "type": "MACHINE_PROCESS",
+        "machine": "create:mechanical_press",
+        "output": "create:iron_sheet"
+      }
+    },
+    {
+      "id": "press_redstone",
+      "description": "Observe redstone produced by mechanical_press",
+      "requiredAmount": 1,
+      "optional": true,
+      "trigger": {
+        "type": "MACHINE_PROCESS",
+        "machine": "create:mechanical_press",
+        "output": "minecraft:redstone"
+      }
+    }
+  ],
+  "rewards": {
+    "main": [
+      {
+        "id": "main_xp",
+        "type": "EXPERIENCE",
+        "amount": 1
+      }
+    ]
+  }
+}

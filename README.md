@@ -1,8 +1,10 @@
 # The Age of Machinery
 
+> **2.14.5 completed — 28 October 2026:** the user confirmed progress on every test objective in the full Create+ pack and accepted the basic integration test. Build, replay regressions, fixture validation and null analysis also passed. No 4096-item grind or repeat testing is required. The [short test guide](docs/tests/2.14.5-processing.md) and future fixture now use one operation per machine. **Next: 2.14.6 — Create campaign content.** Broader integration checks remain in 2.14.7.
+
 *A spoiler-conscious, Create-focused quest and progression mod for Minecraft Java Edition 1.21.1 (NeoForge).*
 
-> **Development checkpoint — 27 October 2026 · 2.14.4 completed, tested, and committed (developer report).** The Age of Machinery now supports server-authoritative quest progression, JSON/data-pack campaigns, builder-attributed Create machine ownership, live kinetic operation detection (2.14.3), and observed Mechanical Press item processing (2.14.4). The developer reports a successful build, 100% success on the milestone checks, and a Git commit for 2.14.4. This document is a retrospective update from the 2.14.2 documentation snapshot and the 2.14.3–2.14.4 implementation discussed in development; it is **not a direct audit of the current local Git working tree or commit hash**. **Next: 2.14.5, additional Create processing machines and automation.**
+> **Development checkpoint — 27 October 2026 · 2.14.4 completed, tested, and committed (developer report).** The Age of Machinery now supports server-authoritative quest progression, JSON/data-pack campaigns, builder-attributed Create machine ownership, live kinetic operation detection (2.14.3), and observed Mechanical Press item processing (2.14.4). The developer reports a successful build, 100% success on the milestone checks, and a Git commit for 2.14.4. This document is a retrospective update from the 2.14.2 documentation snapshot and the 2.14.3–2.14.4 implementation discussed in development; it is **not a direct audit of the current local Git working tree or commit hash**. **Next: 2.14.6, Create campaign content and progression.**
 >
 > **Development launch:** the full Create+ 6.0.0-alpha-f pack is run through Gradle `runClient` in isolated `run-createplus`, with The Age of Machinery loaded from the development source set for IDE debugging. A previous launch blocker was resolved by correcting the local Java environment; exact changes from that external fix were not recorded here. Do not revert to a reduced Create setup or manual Modrinth JAR-copy workflow.
 >
@@ -36,7 +38,7 @@ The Age of Machinery is intended to guide players through a discovery-oriented C
 | Live kinetic monitoring — 2.14.3 | `CreateKineticMonitor`: samples registered installed kinetic machines every 10 server ticks; verifies loaded/valid machine, nonzero finite speed, sufficient power and no overstress; routes `KineticPowerEvent`; `/tamkinetic inspect` diagnostics |
 | Mechanical Press — 2.14.4 | Create 6.0.10 Mixins observe real belt, loose-world-item and basin item-output processing; a bridge aggregates outputs and feeds `ProcessingCompletedEvent` to the existing router; developer reports tests passed and committed |
 | Full Create+ IDE debugging | Working per developer report in isolated `run-createplus` runtime; no manual JAR copying required |
-| Other Create processing | **Next: 2.14.5** — Millstone, Crushing Wheels, Mixer and automated production semantics |
+| Other Create processing | **2.14.5 implemented; basic progress confirmed by user** — Millstone, Crushing Wheels and Mixer |
 | Player journal, networking and hints | **Not implemented:** planned 2.15, including spoiler-safe state sync and replacement for verbose chat notices |
 | Two-player multiplayer and crash-atomic delivery | **Pending**; cannot infer correctness from single-player / normal-restart tests |
 
@@ -211,7 +213,7 @@ The 2.14.4 bridge groups outputs by item registry ID and quantity; it intentiona
 | **2.14.2** | Trusted machine event contracts, builder ownership, persistent installation association, schema/parser routing and debugging commands | **Completed in development / committed (developer report)** |
 | **2.14.3** | Live `CreateKineticMonitor` for working kinetic devices, with `/tamkinetic inspect` diagnostics | **Completed / built, tested and committed (developer report)** |
 | **2.14.4** | Actual Mechanical Press output observation for belt, loose items and basin; integrated with ownership-aware `MACHINE_PROCESS` | **Completed / successful build, 100% tests and commit (developer report)** |
-| **2.14.5** | Additional processing/automation: Millstone, Crushing Wheels, Mechanical Mixer; batch counts, output provenance, deduplication | **NEXT** |
+| **2.14.5** | Millstone, Crushing Wheels and Mechanical Mixer processing | **Completed; basic in-world progress confirmed by user (2026-10-28)** |
 | **2.14.6** | Actual Create quest chapter authored as data-pack JSON; first-use ingredients, optional engineering challenges and rewards | **Planned** |
 | **2.14.7** | Comprehensive integrated gameplay/restart/negative-condition tests in real Create+ environment | **Planned** |
 

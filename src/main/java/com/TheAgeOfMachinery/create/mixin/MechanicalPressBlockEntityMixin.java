@@ -33,17 +33,4 @@ public abstract class MechanicalPressBlockEntityMixin
         MechanicalPressProcessingBridge.onBeltProcessed(press, outputList);
     }
 
-    @Inject(method = "tryProcessInBasin", at = @At("HEAD"), remap = false)
-    private void tam$beginBasinProcessing(boolean simulate, CallbackInfoReturnable<Boolean> callback)
-    {
-        MechanicalPressBlockEntity press = (MechanicalPressBlockEntity) (Object) this;
-
-        MechanicalPressProcessingBridge.beginBasinProcessing(press);
-    }
-
-    @Inject(method = "tryProcessInBasin", at = @At("RETURN"), remap = false)
-    private void tam$endBasinProcessing(boolean simulate, CallbackInfoReturnable<Boolean> callback)
-    {
-        MechanicalPressProcessingBridge.endBasinProcessing();
-    }
 }

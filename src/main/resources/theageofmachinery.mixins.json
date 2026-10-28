@@ -5,7 +5,10 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "MechanicalPressBlockEntityMixin",
-    "BasinBlockEntityMixin"
+    "BasinOperatingBlockEntityMixin",
+    "BasinRecipeMixin",
+    "MillstoneBlockEntityMixin",
+    "CrushingWheelControllerBlockEntityMixin"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -1,0 +1,22 @@
+{
+  "type": "create:compacting",
+  "ingredients": [
+    {
+      "item": "minecraft:structure_void"
+    },
+    {
+      "item": "minecraft:structure_void"
+    }
+  ],
+  "results": [
+    {
+      "id": "create:iron_sheet",
+      "count": 1
+    },
+    {
+      "id": "minecraft:redstone",
+      "count": 2
+    }
+  ],
+  "processing_time": 100
+}

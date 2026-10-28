@@ -1,0 +1,19 @@
+{
+  "type": "create:milling",
+  "ingredients": [
+    {
+      "item": "minecraft:structure_void"
+    }
+  ],
+  "results": [
+    {
+      "id": "minecraft:flint",
+      "count": 2
+    },
+    {
+      "id": "minecraft:redstone",
+      "count": 1
+    }
+  ],
+  "processing_time": 100
+}

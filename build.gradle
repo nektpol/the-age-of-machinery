@@ -252,6 +252,26 @@ tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }
 
+sourceSets {
+    processingRegression {
+        compileClasspath += sourceSets.main.output
+        runtimeClasspath += sourceSets.main.output
+    }
+}
+
+tasks.register('processingRegression', JavaExec) {
+    dependsOn tasks.named('processingRegressionClasses')
+    classpath = sourceSets.processingRegression.runtimeClasspath
+    mainClass = 'com.TheAgeOfMachinery.create.ProcessingOperationLedgerRegression'
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('processingRegression')
+}
+
 // -----------------------------------------------------------------------------
 // IDE Configuration
 // -----------------------------------------------------------------------------
