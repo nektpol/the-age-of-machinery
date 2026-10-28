@@ -1,6 +1,6 @@
 # The Age of Machinery — Future Corrections & Implementation Guide
 
-> **2.15.1 implementation update — 28 October 2026:** authorized immutable player views now filter active/history data and earned rewards from one server-thread snapshot. Privacy, ownership, history and immutability regressions pass. Network delivery, client cache, UI and live multiplayer isolation remain pending. Player revision does not change on cosmetic reload; 2.15.2 must explicitly send refreshed presentation. History uses manifest order with a neutral fallback for missing completed definitions. Save migration, crash atomicity and final campaign design remain separate open work. 2.15.1 is accepted for commit after automatic checks; its automatic tests need no new Minecraft world.
+> **2.15.2 passed — 28 October 2026:** user-confirmed full Create+ advancement, claim and reconnect behavior completes the single-player sync check. Automatic tests and initial/progress/reload live checks also passed. Next is 2.15.3 client action requests. Dedicated-server/two-player verification, large-history paging and reward crash atomicity remain open. Campaign content remains provisional.
 
 **Project:** The Age of Machinery  
 **Target:** Minecraft 1.21.1 · NeoForge 21.1.233 · Java 21 · Create 6.0.10 · Create+ 6.0.0-alpha-f  
@@ -463,6 +463,14 @@ These are agreed product rules; `[x]` below means **decision confirmed**, not ne
 **Acceptance:** The existing 2.14.4 press tests remain green, new machines produce correct counts once, no failed/simulated output is reported, and no stale press/mixer basin context crosses callbacks. Review this issue together with I-014; do not prematurely claim it closed based only on a build.
 
 ---
+
+### I-016 — Large authorized-history delivery
+
+**Status:** `[ ]` **P1** — the initial 2.15.2 full-snapshot codec has explicit limits.
+
+**Current evidence:** Codec tests reject snapshots above 512 KiB and bound nested list/string sizes. Current fixtures fit; rejection never truncates the player's history or rewards. A full Create+ campaign can eventually need more history than a single payload supports.
+
+**Acceptance:** Add history pagination or bounded chunked delivery before final campaigns exceed the limits. Reject oversized snapshots clearly on the server before network encoding can disconnect a player. Test large earned histories, chunk/session/sequence boundaries and reconnect without mixing players, leaking future data or silently losing entries. Do not describe the current codec as unlimited history support.
 
 ## 8. Persistence integration and recovery
 

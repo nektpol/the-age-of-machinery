@@ -36,6 +36,8 @@ import com.TheAgeOfMachinery.create.CreateObjectiveRouter;
 import com.TheAgeOfMachinery.create.CreateObjectiveTestCommand;
 import com.TheAgeOfMachinery.create.CreateKineticMonitor;
 import com.TheAgeOfMachinery.create.CreateKineticStatusCommand;
+import com.TheAgeOfMachinery.sync.CampaignNetwork;
+import com.TheAgeOfMachinery.sync.CampaignSyncService;
 
 import net.neoforged.neoforge.common.NeoForge;
 
@@ -49,6 +51,12 @@ public class TheAgeofMachinery
     public TheAgeofMachinery(IEventBus modEventBus, ModContainer modContainer) 
     {
         LOGGER.info("The Age of Machinery initialized.");
+        modEventBus.addListener(CampaignNetwork::register);
+        NeoForge.EVENT_BUS.addListener(CampaignSyncService::onServerTick);
+        NeoForge.EVENT_BUS.addListener(CampaignSyncService::onLogout);
+        NeoForge.EVENT_BUS.addListener(CampaignSyncService::onRespawn);
+        NeoForge.EVENT_BUS.addListener(CampaignSyncService::onDimensionChange);
+        NeoForge.EVENT_BUS.addListener(CampaignSyncService::onServerStopped);
         NeoForge.EVENT_BUS.addListener(RewardTestCommand::register);
         NeoForge.EVENT_BUS.addListener(RewardClaimTestCommand::register);
         NeoForge.EVENT_BUS.addListener(RewardClaimTestCommand::reset);

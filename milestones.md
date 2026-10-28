@@ -37,7 +37,7 @@
 
 ### 2.15 — Client Synchronization and Visibility
 - [x] 2.15.1 — Authorized Player State Model: active quest, objective progress, ingredient quantities, completed history and earned rewards; exclude future quests and unearned rewards. Completed; automatic checks passed, accepted for commit without a manual game test.
-- [ ] 2.15.2 — Server-to-Client Synchronization: send the player's authorized state on join/rejoin and after relevant changes.
+- [x] 2.15.2 — Server-to-Client Synchronization: player-scoped delivery, batching, join/rejoin and reload refresh (automatic and full Create+ live checks passed; user confirmed 2026-10-28).
 - [ ] 2.15.3 — Client Action Requests: server-validated Advance and Claim requests bound to the packet sender; no client-supplied progress or target UUID.
 - [ ] 2.15.4 — Client State Consistency: apply revisions, handle stale state/action results and clear cached state when leaving a world.
 - [ ] 2.15.5 — Restrained Progress Feedback: replace per-item chat spam with state updates and one-time completion feedback; keep administrator diagnostics.
@@ -45,6 +45,3 @@
 
 ### 2.16 — Quest and Reward UI
 - [ ] Implement the player-facing journal, ingredient lists, manual advancement, and reward claiming.
-
-
-build, 100% success and committed ✅

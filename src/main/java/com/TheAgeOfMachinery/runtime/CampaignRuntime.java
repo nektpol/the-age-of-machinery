@@ -12,6 +12,7 @@ import com.TheAgeOfMachinery.reward.RewardClaimResult;
 import com.TheAgeOfMachinery.reward.RewardEntry;
 import com.TheAgeOfMachinery.reward.RewardManager;
 import com.TheAgeOfMachinery.sync.PlayerCampaignView;
+import com.TheAgeOfMachinery.sync.CampaignSyncService;
 
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -128,7 +129,9 @@ public final class CampaignRuntime
     {
         UUID playerId = validateOnlinePlayer(player);
 
-        return advancementService.startFirstQuest(playerId);
+        boolean started = advancementService.startFirstQuest(playerId);
+        if (started) CampaignSyncService.queue(player);
+        return started;
     }
 
     public boolean addObjectiveProgress(ServerPlayer player, String objectiveId, int amount)
@@ -138,14 +141,18 @@ public final class CampaignRuntime
 
         if (objectiveId.isBlank() || amount <= 0) return false;
 
-        return advancementService.addObjectiveProgress(playerId, objectiveId, amount);
+        boolean changed = advancementService.addObjectiveProgress(playerId, objectiveId, amount);
+        if (changed) CampaignSyncService.queue(player);
+        return changed;
     }
 
     public CampaignAdvancementResult advanceQuest(ServerPlayer player)
     {
         UUID playerId = validateOnlinePlayer(player);
 
-        return advancementService.advanceQuest(playerId);
+        CampaignAdvancementResult result = advancementService.advanceQuest(playerId);
+        if (result == CampaignAdvancementResult.NEXT_QUEST_STARTED || result == CampaignAdvancementResult.CAMPAIGN_COMPLETED) CampaignSyncService.queue(player);
+        return result;
     }
 
     public Optional<QuestDefinition> getActiveQuestDefinition(ServerPlayer player)
@@ -188,7 +195,9 @@ public final class CampaignRuntime
 
         if (questId.isBlank() || rewardId.isBlank()) return RewardClaimResult.NOT_FOUND;
 
-        return rewardManager.claimReward(playerId, questId, rewardId, new MinecraftRewardDelivery(player));
+        RewardClaimResult result = rewardManager.claimReward(playerId, questId, rewardId, new MinecraftRewardDelivery(player));
+        if (result == RewardClaimResult.SUCCESS) CampaignSyncService.queue(player);
+        return result;
     }
 
     public UUID getSessionId()
@@ -232,6 +241,7 @@ public final class CampaignRuntime
         advancementService = replacementService;
         campaign = candidate;
         lastReloadStatus = "APPLIED: Compatible presentation-only campaign reload.";
+        CampaignSyncService.queueAll(server);
     }
 
     public void recordReloadFailure(String reason)

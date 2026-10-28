@@ -1,8 +1,8 @@
 # The Age of Machinery — fresh-chat continuation guide
 
-> **Current work — 2.15.1 implemented, automated checks accepted (28 October 2026):** immutable `sync.PlayerCampaignView`, server-only `runtime.PlayerCampaignViewFactory` and `CampaignRuntime.getPlayerView(ServerPlayer)` now provide the authorized snapshot. Build/player-view privacy regressions passed; networking and UI are not implemented yet. Read [the contract](tests/2.15.1-player-view.md) before 2.15.2: use the runtime projection, preserve earned-ledger values, send cosmetic reload refreshes even at unchanged player revision, and keep payload recipient bound to the connected player. No new world/machine test is needed for 2.15.1. 2.14.7 ownership was accepted and committed as `9b58f6b`; its restart and multiplayer checks remain unreported. Final campaign design remains deferred. Provide commit title/description whenever the user confirms acceptance.
+> **2.15.2 accepted — 28 October 2026:** the user confirmed advancement/claim client-cache updates and reconnect behavior. Previous automatic and live initial/progress/reload checks also passed. Commit/push this completed step, then implement **2.15.3 — server-validated client Advance/Claim requests**. Derive the player from the packet context; never accept target-player UUIDs or progress amounts. Preserve the authorized view and connection scoping. User authorizes automatic commit/push when no manual test remains; provide title/description for confirmed tests. Campaign design stays deferred.
 
-**Checkpoint:** 2026-10-28 · **2.14.7 committed; 2.15.1 implemented/automatically checked, automated checks accepted; campaign design provisional**
+**Checkpoint:** 2026-10-28 · **2.15.2 accepted; next 2.15.3; campaign provisional**
 **Repo (local):** `C:\the-age-of-machinery`  
 **Minecraft:** 1.21.1 · **NeoForge:** 21.1.233 · **Java:** 21  
 **Full pack:** Create+ Modrinth `6.0.0-alpha-f` in an **isolated Gradle development client** `run-createplus/`  

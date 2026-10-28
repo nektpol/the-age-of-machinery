@@ -1,6 +1,7 @@
 package com.TheAgeOfMachinery.runtime;
 
 import com.TheAgeOfMachinery.quest.QuestDefinition;
+import com.TheAgeOfMachinery.sync.CampaignSyncService;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
@@ -23,7 +24,9 @@ public final class CampaignPlayerEvents
         MinecraftServer server = Objects.requireNonNull(player.getServer(), "Player's Minecraft server cannot be null.");
         CampaignRuntime runtime = CampaignRuntime.get(server);
 
-        if (!runtime.initializePlayerCampaign(player)) return;
+        boolean initialized = runtime.initializePlayerCampaign(player);
+        CampaignSyncService.queue(player);
+        if (!initialized) return;
 
         Optional<QuestDefinition> activeQuest = runtime.getActiveQuestDefinition(player);
 

@@ -1,6 +1,6 @@
 # The Age of Machinery
 
-> **2.15.1 implemented — 28 October 2026:** the shared immutable player view exposes active quest progress/ingredients, completed history and earned reward entries only. `CampaignRuntime.getPlayerView` captures one player-owned snapshot on the server thread; future quests and unearned rewards stay out. Build, existing regressions and the new privacy/immutability checks passed. See [2.15.1 contract and checks](docs/tests/2.15.1-player-view.md). Accepted for commit after automatic checks; next implementation step is 2.15.2 server-to-client synchronization. No new in-world test is needed for this data-only step. Campaign design remains provisional until mod systems are complete.
+> **2.15.2 passed — 28 October 2026:** the user confirmed the short advancement/claim/reconnect test in full Create+. Authorized per-player snapshots, batching, codec limits, reload refresh and client connection scoping are implemented. Automatic regressions and null analysis passed. Next: **2.15.3 — Client Advance/Claim Requests**. Campaign design remains provisional; multiplayer/dedicated-server acceptance and large-history delivery remain separate open checks.
 
 *A spoiler-conscious, Create-focused quest and progression mod for Minecraft Java Edition 1.21.1 (NeoForge).*
 
